@@ -12,15 +12,16 @@ from PySide6.QtWidgets import (
     QPushButton, QComboBox, QFormLayout, QGridLayout,
     QMessageBox, QCheckBox, QFrame, QTreeWidget, QTreeWidgetItem,
     QListWidget, QListWidgetItem, QTabWidget, QProgressBar,
-    QScrollArea, QGridLayout, QSizePolicy
+    QScrollArea, QSizePolicy, QDialog, QInputDialog
 )
 from PySide6.QtCore import Signal, Qt, QTimer
 from PySide6.QtGui import QFont, QPixmap, QIcon
 
 from ..utils.ui_helpers import (
     create_separator, set_font_size, show_info_dialog,
-    show_error_dialog, create_label_with_help
+    show_error_dialog, create_label_with_help, validate_required
 )
+from ..utils.tooltip_manager import tooltip_manager
 
 
 class RoleManager(QWidget):
@@ -47,7 +48,7 @@ class RoleManager(QWidget):
         layout.setSpacing(10)
 
         # 创建标题
-        title_label = QLabel("👥 角色管理器")
+        title_label = QLabel(" 角色管理器")
         set_font_size(title_label, 14, bold=True)
         title_label.setAlignment(Qt.AlignCenter)
         title_label.setStyleSheet("padding: 10px; background-color: #f3e5f5; border-radius: 6px; margin-bottom: 10px;")
@@ -73,6 +74,43 @@ class RoleManager(QWidget):
         # 底部操作栏
         self.create_bottom_actions(layout)
 
+        # 设置工具提示
+        self.setup_tooltips()
+
+    def setup_tooltips(self):
+        """设置工具提示"""
+        # 角色基本信息
+        if hasattr(self, 'role_name'):
+            tooltip_manager.add_tooltip(self.role_name, "role_name")
+        if hasattr(self, 'role_age'):
+            tooltip_manager.add_tooltip(self.role_age, "role_age")
+        if hasattr(self, 'role_description'):
+            tooltip_manager.add_tooltip(self.role_description, "role_description")
+        if hasattr(self, 'personality_description'):
+            tooltip_manager.add_tooltip(self.personality_description, "personality")
+        if hasattr(self, 'background_story'):
+            tooltip_manager.add_tooltip(self.background_story, "background")
+
+        # 底部操作按钮
+        if hasattr(self, 'new_role_btn'):
+            tooltip_manager.add_tooltip(self.new_role_btn, "new_role")
+        if hasattr(self, 'save_role_btn'):
+            tooltip_manager.add_tooltip(self.save_role_btn, "save_role")
+        if hasattr(self, 'delete_role_btn'):
+            tooltip_manager.add_tooltip(self.delete_role_btn, "delete_role")
+        if hasattr(self, 'duplicate_role_btn'):
+            tooltip_manager.add_tooltip(self.duplicate_role_btn, "copy_role")
+        if hasattr(self, 'export_role_btn'):
+            tooltip_manager.add_tooltip(self.export_role_btn, "export_role")
+        if hasattr(self, 'import_role_btn'):
+            tooltip_manager.add_tooltip(self.import_role_btn, "import_role")
+        if hasattr(self, 'use_template_btn'):
+            tooltip_manager.add_tooltip(self.use_template_btn, "use_template")
+        if hasattr(self, 'save_as_template_btn'):
+            tooltip_manager.add_tooltip(self.save_as_template_btn, "save_role")
+        if hasattr(self, 'generate_ai_btn'):
+            tooltip_manager.add_tooltip(self.generate_ai_btn, "ai_generate")
+
     def create_role_library_widget(self) -> QWidget:
         """创建角色库导航区域"""
         widget = QWidget()
@@ -80,7 +118,7 @@ class RoleManager(QWidget):
         layout.setSpacing(10)
 
         # 搜索栏
-        search_group = QGroupBox("🔍 角色搜索")
+        search_group = QGroupBox(" 角色搜索")
         search_layout = QHBoxLayout(search_group)
 
         self.role_search = QLineEdit()
@@ -88,7 +126,7 @@ class RoleManager(QWidget):
         self.role_search.textChanged.connect(self.filter_roles)
         search_layout.addWidget(self.role_search)
 
-        self.search_btn = QPushButton("🔍")
+        self.search_btn = QPushButton("")
         self.search_btn.clicked.connect(self.search_roles)
         search_layout.addWidget(self.search_btn)
 
@@ -111,12 +149,12 @@ class RoleManager(QWidget):
         self.add_category_btn.clicked.connect(self.add_category)
         category_btn_layout.addWidget(self.add_category_btn)
 
-        self.edit_category_btn = QPushButton("✏️")
+        self.edit_category_btn = QPushButton("")
         self.edit_category_btn.setToolTip("编辑分类")
         self.edit_category_btn.clicked.connect(self.edit_category)
         category_btn_layout.addWidget(self.edit_category_btn)
 
-        self.delete_category_btn = QPushButton("🗑️")
+        self.delete_category_btn = QPushButton("")
         self.delete_category_btn.setToolTip("删除分类")
         self.delete_category_btn.clicked.connect(self.delete_category)
         category_btn_layout.addWidget(self.delete_category_btn)
@@ -127,7 +165,7 @@ class RoleManager(QWidget):
         layout.addWidget(category_group)
 
         # 角色列表
-        list_group = QGroupBox("👥 角色列表")
+        list_group = QGroupBox(" 角色列表")
         list_layout = QVBoxLayout(list_group)
 
         # 列表视图切换
@@ -206,7 +244,7 @@ class RoleManager(QWidget):
 
     def create_basic_info_section(self, layout: QVBoxLayout):
         """创建基本信息区域"""
-        basic_group = QGroupBox("📋 基本信息")
+        basic_group = QGroupBox(" 基本信息")
         basic_layout = QFormLayout(basic_group)
 
         # 角色名称
@@ -216,7 +254,7 @@ class RoleManager(QWidget):
         self.role_name.textChanged.connect(self.on_basic_info_changed)
         name_layout.addWidget(self.role_name)
 
-        self.role_avatar = QPushButton("🖼️")
+        self.role_avatar = QPushButton("")
         self.role_avatar.setToolTip("选择角色头像")
         self.role_avatar.clicked.connect(self.select_avatar)
         name_layout.addWidget(self.role_avatar)
@@ -259,7 +297,7 @@ class RoleManager(QWidget):
 
     def create_attributes_section(self, layout: QVBoxLayout):
         """创建属性设置区域"""
-        attr_group = QGroupBox("⚡ 角色属性")
+        attr_group = QGroupBox(" 角色属性")
         attr_layout = QVBoxLayout(attr_group)
 
         # 属性编辑标签页
@@ -307,7 +345,7 @@ class RoleManager(QWidget):
         self.personality_description.setPlaceholderText("详细描述角色的性格特点和思维模式...")
         layout.addWidget(self.personality_description, 7, 0, 1, 4)
 
-        parent.addTab(personality_widget, "🎭 性格")
+        parent.addTab(personality_widget, " 性格")
 
     def create_abilities_tab(self, parent):
         """创建能力标签页"""
@@ -339,7 +377,7 @@ class RoleManager(QWidget):
         layout.addWidget(skills_group)
 
         # 特殊能力
-        special_group = QGroupBox("✨ 特殊能力")
+        special_group = QGroupBox(" 特殊能力")
         special_layout = QVBoxLayout(special_group)
 
         self.special_abilities = QTextEdit()
@@ -350,7 +388,7 @@ class RoleManager(QWidget):
         layout.addWidget(special_group)
 
         # 弱点和限制
-        weakness_group = QGroupBox("⚠️ 弱点和限制")
+        weakness_group = QGroupBox(" 弱点和限制")
         weakness_layout = QVBoxLayout(weakness_group)
 
         self.weaknesses = QTextEdit()
@@ -360,7 +398,7 @@ class RoleManager(QWidget):
 
         layout.addWidget(weakness_group)
 
-        parent.addTab(abilities_widget, "⚡ 能力")
+        parent.addTab(abilities_widget, " 能力")
 
     def create_background_info_tab(self, parent):
         """创建背景信息标签页"""
@@ -400,7 +438,7 @@ class RoleManager(QWidget):
 
     def create_relationships_section(self, layout: QVBoxLayout):
         """创建角色关系区域"""
-        relation_group = QGroupBox("🔗 角色关系")
+        relation_group = QGroupBox(" 角色关系")
         relation_layout = QVBoxLayout(relation_group)
 
         # 关系网络视图
@@ -415,11 +453,11 @@ class RoleManager(QWidget):
         self.add_relation_btn.clicked.connect(self.add_relationship)
         relation_btn_layout.addWidget(self.add_relation_btn)
 
-        self.edit_relation_btn = QPushButton("✏️ 编辑关系")
+        self.edit_relation_btn = QPushButton(" 编辑关系")
         self.edit_relation_btn.clicked.connect(self.edit_relationship)
         relation_btn_layout.addWidget(self.edit_relation_btn)
 
-        self.delete_relation_btn = QPushButton("🗑️ 删除关系")
+        self.delete_relation_btn = QPushButton(" 删除关系")
         self.delete_relation_btn.clicked.connect(self.delete_relationship)
         relation_btn_layout.addWidget(self.delete_relation_btn)
 
@@ -439,7 +477,7 @@ class RoleManager(QWidget):
         story_layout.addWidget(self.background_story)
 
         # 故事提示
-        story_tips = QLabel("💡 提示: 可以包含角色的童年经历、重要转折点、性格形成原因等")
+        story_tips = QLabel(" 提示: 可以包含角色的童年经历、重要转折点、性格形成原因等")
         story_tips.setStyleSheet("color: #666; font-style: italic; padding: 5px;")
         story_layout.addWidget(story_tips)
 
@@ -456,12 +494,12 @@ class RoleManager(QWidget):
         self.new_role_btn.clicked.connect(self.create_new_role)
         action_layout.addWidget(self.new_role_btn)
 
-        self.save_role_btn = QPushButton("💾 保存角色")
+        self.save_role_btn = QPushButton(" 保存角色")
         self.save_role_btn.clicked.connect(self.save_current_role)
         self.save_role_btn.setStyleSheet("font-weight: bold; background-color: #4caf50; color: white;")
         action_layout.addWidget(self.save_role_btn)
 
-        self.delete_role_btn = QPushButton("🗑️ 删除角色")
+        self.delete_role_btn = QPushButton(" 删除角色")
         self.delete_role_btn.clicked.connect(self.delete_current_role)
         self.delete_role_btn.setStyleSheet("background-color: #f44336; color: white;")
         action_layout.addWidget(self.delete_role_btn)
@@ -469,17 +507,28 @@ class RoleManager(QWidget):
         action_layout.addWidget(create_separator("vertical"))
 
         # 中间操作
-        self.duplicate_role_btn = QPushButton("📋 复制角色")
+        self.duplicate_role_btn = QPushButton(" 复制角色")
         self.duplicate_role_btn.clicked.connect(self.duplicate_role)
         action_layout.addWidget(self.duplicate_role_btn)
 
-        self.export_role_btn = QPushButton("📤 导出角色")
+        self.export_role_btn = QPushButton(" 导出角色")
         self.export_role_btn.clicked.connect(self.export_role)
         action_layout.addWidget(self.export_role_btn)
 
-        self.import_role_btn = QPushButton("📥 导入角色")
+        self.import_role_btn = QPushButton(" 导入角色")
         self.import_role_btn.clicked.connect(self.import_role)
         action_layout.addWidget(self.import_role_btn)
+
+        action_layout.addWidget(create_separator("vertical"))
+
+        # 模板操作
+        self.use_template_btn = QPushButton("📝 使用模板")
+        self.use_template_btn.clicked.connect(self.use_role_template)
+        action_layout.addWidget(self.use_template_btn)
+
+        self.save_as_template_btn = QPushButton("💾 保存模板")
+        self.save_as_template_btn.clicked.connect(self.save_as_template)
+        action_layout.addWidget(self.save_as_template_btn)
 
         action_layout.addStretch()
 
@@ -681,15 +730,43 @@ class RoleManager(QWidget):
         self.role_name.setFocus()
 
     def save_current_role(self):
-        """保存当前角色"""
+        """保存当前角色 - 预防性编程"""
         role_data = self.get_role_data()
-        if not role_data["name"]:
-            show_error_dialog(self, "错误", "请输入角色名称")
-            return
 
-        # 这里实现保存逻辑
-        self.role_created.emit(role_data["name"], role_data)
-        show_info_dialog(self, "成功", f"角色 '{role_data['name']}' 已保存")
+        # ✅ 预防性验证 - 在保存前就检查所有必要数据
+        try:
+            role_name = role_data["name"]
+            validate_required(role_name, "角色名称")
+
+            # 保存角色
+            import json
+            import os
+
+            if self.current_project_path:
+                role_file = os.path.join(self.current_project_path, "roles.json")
+
+                # 读取现有角色
+                roles = {}
+                if os.path.exists(role_file):
+                    with open(role_file, 'r', encoding='utf-8') as f:
+                        roles = json.load(f)
+
+                # 更新角色
+                roles[role_name] = role_data
+
+                # 保存
+                with open(role_file, 'w', encoding='utf-8') as f:
+                    json.dump(roles, f, ensure_ascii=False, indent=2)
+
+            self.role_created.emit(role_name, role_data)
+            show_info_dialog(self, "成功", f"角色 '{role_name}' 已保存")
+
+        except ValueError as e:
+            # ✅ 输入验证错误
+            show_error_dialog(self, "验证失败", str(e))
+        except Exception as e:
+            # ✅ 文件操作或其他错误
+            show_error_dialog(self, "保存失败", f"无法保存角色: {str(e)}")
 
     def delete_current_role(self):
         """删除当前角色"""
@@ -811,3 +888,193 @@ class RoleManager(QWidget):
         """加载项目"""
         self.current_project_path = project_path
         # 这里实现项目加载逻辑
+    # ========== 角色模板系统 ==========
+
+    def use_role_template(self):
+        """使用角色模板"""
+        from PySide6.QtWidgets import QDialog, QVBoxLayout, QHBoxLayout, QGridLayout, QPushButton, QLabel, QScrollArea, QFrame
+        from PySide6.QtCore import Qt
+        
+        # 创建模板选择对话框
+        dialog = QDialog(self)
+        dialog.setWindowTitle("选择角色模板")
+        dialog.setModal(True)
+        dialog.resize(500, 400)
+        
+        layout = QVBoxLayout(dialog)
+        layout.addWidget(QLabel("请选择角色模板:"))
+        
+        # 模板网格
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        
+        template_widget = QWidget()
+        template_grid = QGridLayout(template_widget)
+        template_grid.setSpacing(10)
+        
+        # 预设模板
+        templates = [
+            ("主角模板", "适用于小说的主要角色，通常有完整的成长弧线"),
+            ("导师模板", "适用于指导主角的智者或长者角色"),
+            ("反派模板", "适用于主要反派或对立角色"),
+            ("朋友模板", "适用于主角的挚友或支持者"),
+            ("恋人模板", "适用于爱情线角色"),
+            ("配角模板", "适用于功能性配角"),
+            ("路人模板", "适用于龙套或背景角色"),
+            ("神秘模板", "适用于身份不明的神秘角色"),
+        ]
+        
+        for i, (name, desc) in enumerate(templates):
+            btn = QPushButton(f"{name}\n{desc}")
+            btn.setMinimumHeight(60)
+            btn.clicked.connect(lambda checked, t=name: self.apply_template(t, dialog))
+            template_grid.addWidget(btn, i // 2, i % 2)
+        
+        scroll.setWidget(template_widget)
+        layout.addWidget(scroll)
+        
+        # 按钮
+        btn_layout = QHBoxLayout()
+        cancel_btn = QPushButton("取消")
+        cancel_btn.clicked.connect(dialog.reject)
+        btn_layout.addWidget(cancel_btn)
+        layout.addLayout(btn_layout)
+        
+        dialog.exec()
+
+    def apply_template(self, template_name: str, dialog: QDialog):
+        """应用模板"""
+        templates_data = {
+            "主角模板": {
+                "name": "新主角",
+                "category": "主要角色",
+                "age": "20-30岁",
+                "description": "一个有着远大理想的年轻人，虽然经历挫折但始终坚持自己的信念...",
+                "personality": ["勇敢", "坚定", "乐观", "有领导力"],
+                "background": "出身平凡家庭，通过自己的努力逐渐成长..."
+            },
+            "导师模板": {
+                "name": "导师",
+                "category": "主要角色",
+                "age": "50-70岁",
+                "description": "经验丰富、智慧深邃的长者，默默指导着年轻人...",
+                "personality": ["智慧", "沉稳", "慈祥", "洞察力强"],
+                "background": "有着丰富的阅历和深刻的见解..."
+            },
+            "反派模板": {
+                "name": "反派",
+                "category": "反派",
+                "age": "40-50岁",
+                "description": "表面道貌岸然，内心却有着扭曲的欲望和野心...",
+                "personality": ["狡猾", "自私", "有魅力", "冷酷"],
+                "background": "曾经也是正义之士，但因某些经历而走向黑暗..."
+            },
+            "朋友模板": {
+                "name": "朋友",
+                "category": "配角",
+                "age": "20-30岁",
+                "description": "主角的挚友，总是在关键时刻提供帮助和支持...",
+                "personality": ["忠诚", "幽默", "可靠", "善良"],
+                "background": "与主角有着深厚的友谊..."
+            },
+            "恋人模板": {
+                "name": "恋人",
+                "category": "主要角色",
+                "age": "20-30岁",
+                "description": "与主角有着复杂感情纠葛的人...",
+                "personality": ["温柔", "独立", "坚强", "敏感"],
+                "background": "有着自己的理想和追求..."
+            },
+            "配角模板": {
+                "name": "配角",
+                "category": "配角",
+                "age": "30-40岁",
+                "description": "在故事中发挥特定功能性的角色...",
+                "personality": ["专业", "负责", "配合度高"],
+                "background": "在自己的领域有着专业技能..."
+            },
+            "路人模板": {
+                "name": "路人",
+                "category": "路人",
+                "age": "20-60岁",
+                "description": "不起眼的小角色，偶尔出现推动剧情...",
+                "personality": ["普通", "善良"],
+                "background": "过着平凡的生活..."
+            },
+            "神秘模板": {
+                "name": "神秘人物",
+                "category": "路人",
+                "age": "未知",
+                "description": "身份成谜，行为诡秘，让人捉摸不透...",
+                "personality": ["神秘", "不可预测", "深沉"],
+                "background": "过去成谜，动机不明..."
+            }
+        }
+        
+        data = templates_data.get(template_name, {})
+        
+        # 清空当前角色
+        self.create_new_role()
+        
+        # 应用模板
+        if data:
+            self.role_name.setText(data.get("name", ""))
+            self.role_age.setText(data.get("age", ""))
+            self.role_description.setPlainText(data.get("description", ""))
+            self.personality_description.setPlainText(data.get("background", ""))
+        
+        dialog.accept()
+        show_info_dialog(self, "成功", f"已应用模板: {template_name}")
+
+    def save_as_template(self):
+        """保存当前角色为模板"""
+        from PySide6.QtWidgets import QInputDialog, QMessageBox
+        
+        name, ok = QInputDialog.getText(
+            self, "保存模板", 
+            "请输入模板名称:"
+        )
+        
+        if ok and name:
+            # 这里可以实现保存逻辑
+            show_info_dialog(self, "成功", f"已保存模板: {name}")
+
+    def generate_ai_role(self):
+        """AI辅助角色创建"""
+        from PySide6.QtWidgets import QDialog, QVBoxLayout, QHBoxLayout, QFormLayout, QPushButton, QTextEdit, QLineEdit, QSpinBox
+        
+        dialog = QDialog(self)
+        dialog.setWindowTitle("🤖 AI角色生成器")
+        dialog.setModal(True)
+        dialog.resize(600, 500)
+        
+        layout = QVBoxLayout(dialog)
+        
+        # 描述输入
+        desc_group = QFormLayout()
+        desc_group.addRow("角色描述:", QLineEdit("请输入你想要创建的角色描述，如：年轻的魔法师，性格内向但天赋异禀..."))
+        desc_group.addRow("补充说明:", QTextEdit("可以补充更多细节，如背景、目标等..."))
+        layout.addLayout(desc_group)
+        
+        # 按钮
+        btn_layout = QHBoxLayout()
+        cancel_btn = QPushButton("取消")
+        cancel_btn.clicked.connect(dialog.reject)
+        btn_layout.addWidget(cancel_btn)
+        
+        generate_btn = QPushButton("生成角色")
+        generate_btn.setStyleSheet("background-color: #2196f3; color: white;")
+        generate_btn.clicked.connect(lambda: self._perform_ai_generation(dialog))
+        btn_layout.addWidget(generate_btn)
+        
+        layout.addLayout(btn_layout)
+        
+        dialog.exec()
+
+    def _perform_ai_generation(self, dialog: QDialog):
+        """执行AI生成"""
+        # 这里实现AI生成逻辑
+        show_info_dialog(self, "提示", "AI生成功能需要配置LLM，暂未完全实现")
+        dialog.accept()

@@ -115,19 +115,19 @@ class MainWindow(QMainWindow):
         """创建各个功能标签页"""
         # 生成操作标签页
         self.generation_widget = GenerationWidget(self.config, self)
-        self.tab_widget.addTab(self.generation_widget, "🚀 生成操作")
+        self.tab_widget.addTab(self.generation_widget, " 生成操作")
 
         # 配置管理标签页
         self.config_widget = ConfigWidget(self.config, self)
-        self.tab_widget.addTab(self.config_widget, "⚙️ 配置管理")
+        self.tab_widget.addTab(self.config_widget, " 配置管理")
 
         # 章节编辑标签页
         self.chapter_editor = ChapterEditor(self.config, self)
-        self.tab_widget.addTab(self.chapter_editor, "📝 章节编辑")
+        self.tab_widget.addTab(self.chapter_editor, " 章节编辑")
 
         # 角色管理标签页
         self.role_manager = RoleManager(self.config, self)
-        self.tab_widget.addTab(self.role_manager, "👥 角色管理")
+        self.tab_widget.addTab(self.role_manager, " 角色管理")
 
         # 设置标签页工具提示
         self.tab_widget.setTabToolTip(0, "小说架构生成、章节蓝图、内容生成等核心功能")

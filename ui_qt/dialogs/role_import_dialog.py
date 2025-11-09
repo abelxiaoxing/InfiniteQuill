@@ -47,7 +47,7 @@ class RoleImportDialog(QDialog):
         layout.setSpacing(10)
 
         # 创建标题
-        title_label = QLabel("📥 导入角色信息")
+        title_label = QLabel(" 导入角色信息")
         set_font_size(title_label, 14, bold=True)
         title_label.setAlignment(Qt.AlignCenter)
         title_label.setStyleSheet("padding: 10px; background-color: #e8f5e8; border-radius: 6px; margin-bottom: 10px;")
@@ -78,7 +78,7 @@ class RoleImportDialog(QDialog):
         layout.setSpacing(10)
 
         # 文件选择
-        file_group = QGroupBox("📁 选择文件")
+        file_group = QGroupBox(" 选择文件")
         file_layout = QFormLayout(file_group)
 
         self.file_path = QLineEdit()
@@ -98,7 +98,7 @@ class RoleImportDialog(QDialog):
         layout.addWidget(file_group)
 
         # 文件预览
-        preview_group = QGroupBox("👁️ 文件预览")
+        preview_group = QGroupBox(" 文件预览")
         preview_layout = QVBoxLayout(preview_group)
 
         self.file_preview = QTextEdit()
@@ -110,7 +110,7 @@ class RoleImportDialog(QDialog):
         layout.addWidget(preview_group)
 
         # 导入选项
-        options_group = QGroupBox("⚙️ 导入选项")
+        options_group = QGroupBox(" 导入选项")
         options_layout = QVBoxLayout(options_group)
 
         self.overwrite_existing = QCheckBox("覆盖同名角色")
@@ -138,18 +138,18 @@ class RoleImportDialog(QDialog):
         layout.setSpacing(10)
 
         # 搜索过滤
-        search_group = QGroupBox("🔍 搜索和过滤")
+        search_group = QGroupBox(" 搜索和过滤")
         search_layout = QHBoxLayout(search_group)
 
         self.search_input = QLineEdit()
         self.search_input.setPlaceholderText("输入角色名或特征...")
         search_layout.addWidget(self.search_input)
 
-        self.search_btn = QPushButton("🔍")
+        self.search_btn = QPushButton("")
         self.search_btn.clicked.connect(self.filter_roles)
         search_layout.addWidget(self.search_btn)
 
-        self.clear_filter_btn = QPushButton("🗑️")
+        self.clear_filter_btn = QPushButton("")
         self.clear_filter_btn.setToolTip("清除过滤")
         self.clear_filter_btn.clicked.connect(self.clear_filter)
         search_layout.addWidget(self.clear_filter_btn)
@@ -157,21 +157,21 @@ class RoleImportDialog(QDialog):
         layout.addWidget(search_group)
 
         # 角色列表
-        list_group = QGroupBox("👥 可导入角色")
+        list_group = QGroupBox(" 可导入角色")
         list_layout = QVBoxLayout(list_group)
 
         # 列表控制
         control_layout = QHBoxLayout()
 
-        self.select_all_btn = QPushButton("✅ 全选")
+        self.select_all_btn = QPushButton(" 全选")
         self.select_all_btn.clicked.connect(self.select_all_roles)
         control_layout.addWidget(self.select_all_btn)
 
-        self.deselect_all_btn = QPushButton("❌ 全不选")
+        self.deselect_all_btn = QPushButton(" 全不选")
         self.deselect_all_btn.clicked.connect(self.deselect_all_roles)
         control_layout.addWidget(self.deselect_all_btn)
 
-        self.invert_selection_btn = QPushButton("🔄 反选")
+        self.invert_selection_btn = QPushButton(" 反选")
         self.invert_selection_btn.clicked.connect(self.invert_selection)
         control_layout.addWidget(self.invert_selection_btn)
 
@@ -214,11 +214,11 @@ class RoleImportDialog(QDialog):
 
         layout.addWidget(self.file_path)
 
-        browse_btn = QPushButton("📁 浏览")
+        browse_btn = QPushButton(" 浏览")
         browse_btn.clicked.connect(self.browse_file)
         layout.addWidget(browse_btn)
 
-        preview_btn = QPushButton("👁️ 预览")
+        preview_btn = QPushButton(" 预览")
         preview_btn.clicked.connect(self.preview_file)
         layout.addWidget(preview_btn)
 
@@ -229,13 +229,13 @@ class RoleImportDialog(QDialog):
         button_layout = QHBoxLayout()
         button_layout.addStretch()
 
-        self.import_btn = QPushButton("📥 导入选中角色")
+        self.import_btn = QPushButton(" 导入选中角色")
         self.import_btn.clicked.connect(self.import_selected_roles)
         self.import_btn.setStyleSheet("font-weight: bold; background-color: #4caf50; color: white;")
         self.import_btn.setEnabled(False)
         button_layout.addWidget(self.import_btn)
 
-        self.cancel_btn = QPushButton("❌ 取消")
+        self.cancel_btn = QPushButton(" 取消")
         self.cancel_btn.clicked.connect(self.reject)
         button_layout.addWidget(self.cancel_btn)
 

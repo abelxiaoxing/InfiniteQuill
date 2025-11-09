@@ -11,7 +11,7 @@ from PySide6.QtWidgets import (
     QGroupBox, QLabel, QLineEdit, QTextEdit, QSpinBox,
     QPushButton, QComboBox, QFormLayout, QGridLayout,
     QMessageBox, QCheckBox, QFrame, QTreeWidget, QTreeWidgetItem,
-    QListWidget, QListWidgetItem, QTabWidget, QProgressBar
+    QListWidget, QListWidgetItem, QTabWidget, QProgressBar, QMenu
 )
 from PySide6.QtCore import Signal, Qt, QTimer
 from PySide6.QtGui import QFont, QTextCursor, QAction, QTextDocument
@@ -38,6 +38,7 @@ class ChapterEditor(QWidget):
         self.is_modified = False
         self.setup_ui()
         self.setup_editor_actions()
+        self.setup_context_menus()
 
     def setup_ui(self):
         """设置UI布局"""
@@ -46,7 +47,7 @@ class ChapterEditor(QWidget):
         layout.setSpacing(10)
 
         # 创建标题
-        title_label = QLabel("📝 章节编辑器")
+        title_label = QLabel(" 章节编辑器")
         set_font_size(title_label, 14, bold=True)
         title_label.setAlignment(Qt.AlignCenter)
         title_label.setStyleSheet("padding: 10px; background-color: #e3f2fd; border-radius: 6px; margin-bottom: 10px;")
@@ -104,12 +105,12 @@ class ChapterEditor(QWidget):
         layout.addWidget(nav_group)
 
         # 章节列表
-        list_group = QGroupBox("📋 章节列表")
+        list_group = QGroupBox(" 章节列表")
         list_layout = QVBoxLayout(list_group)
 
         # 视图切换
         view_layout = QHBoxLayout()
-        self.list_view_btn = QPushButton("📄")
+        self.list_view_btn = QPushButton("")
         self.list_view_btn.setCheckable(True)
         self.list_view_btn.setChecked(True)
         self.list_view_btn.clicked.connect(lambda: self.switch_view("list"))
@@ -155,18 +156,18 @@ class ChapterEditor(QWidget):
         layout.addWidget(stats_group)
 
         # 操作按钮
-        action_group = QGroupBox("⚡ 快捷操作")
+        action_group = QGroupBox(" 快捷操作")
         action_layout = QVBoxLayout(action_group)
 
         self.add_chapter_btn = QPushButton("➕ 新增章节")
         self.add_chapter_btn.clicked.connect(self.add_chapter)
         action_layout.addWidget(self.add_chapter_btn)
 
-        self.delete_chapter_btn = QPushButton("🗑️ 删除章节")
+        self.delete_chapter_btn = QPushButton(" 删除章节")
         self.delete_chapter_btn.clicked.connect(self.delete_chapter)
         action_layout.addWidget(self.delete_chapter_btn)
 
-        self.reorder_btn = QPushButton("🔄 调整顺序")
+        self.reorder_btn = QPushButton(" 调整顺序")
         self.reorder_btn.clicked.connect(self.reorder_chapters)
         action_layout.addWidget(self.reorder_btn)
 
@@ -194,6 +195,9 @@ class ChapterEditor(QWidget):
         # 元信息标签页
         self.create_metadata_tab()
 
+        # 项目概览标签页
+        self.create_project_overview_tab()
+
         # 工具栏
         self.create_toolbar(layout)
 
@@ -218,7 +222,7 @@ class ChapterEditor(QWidget):
         self.word_count_label = QLabel("0")
         info_layout.addWidget(self.word_count_label)
 
-        self.status_label = QLabel("✏️ 编辑中")
+        self.status_label = QLabel(" 编辑中")
         self.status_label.setStyleSheet("padding: 2px 8px; background-color: #fff3cd; color: #856404; border-radius: 3px;")
         info_layout.addWidget(self.status_label)
 
@@ -230,7 +234,7 @@ class ChapterEditor(QWidget):
         self.chapter_editor.textChanged.connect(self.on_content_changed)
         layout.addWidget(self.chapter_editor)
 
-        self.editor_tabs.addTab(edit_widget, "✏️ 编辑")
+        self.editor_tabs.addTab(edit_widget, " 编辑")
 
     def create_preview_tab(self):
         """创建预览标签页"""
@@ -239,11 +243,11 @@ class ChapterEditor(QWidget):
 
         # 预览工具栏
         preview_toolbar = QHBoxLayout()
-        self.refresh_preview_btn = QPushButton("🔄 刷新预览")
+        self.refresh_preview_btn = QPushButton(" 刷新预览")
         self.refresh_preview_btn.clicked.connect(self.refresh_preview)
         preview_toolbar.addWidget(self.refresh_preview_btn)
 
-        self.export_preview_btn = QPushButton("📤 导出预览")
+        self.export_preview_btn = QPushButton(" 导出预览")
         self.export_preview_btn.clicked.connect(self.export_preview)
         preview_toolbar.addWidget(self.export_preview_btn)
 
@@ -256,7 +260,7 @@ class ChapterEditor(QWidget):
         self.preview_area.setPlaceholderText("预览内容将在此显示...")
         layout.addWidget(self.preview_area)
 
-        self.editor_tabs.addTab(preview_widget, "👁️ 预览")
+        self.editor_tabs.addTab(preview_widget, " 预览")
 
     def create_metadata_tab(self):
         """创建元信息标签页"""
@@ -265,7 +269,7 @@ class ChapterEditor(QWidget):
         layout.setSpacing(10)
 
         # 基本信息
-        basic_group = QGroupBox("📋 基本信息")
+        basic_group = QGroupBox(" 基本信息")
         basic_layout = QFormLayout(basic_group)
 
         self.chapter_number = QSpinBox()
@@ -312,7 +316,7 @@ class ChapterEditor(QWidget):
         layout.addWidget(tags_group)
 
         # 备注
-        notes_group = QGroupBox("📝 备注")
+        notes_group = QGroupBox(" 备注")
         notes_layout = QVBoxLayout(notes_group)
 
         self.chapter_notes = QTextEdit()
@@ -324,6 +328,69 @@ class ChapterEditor(QWidget):
         layout.addStretch()
 
         self.editor_tabs.addTab(metadata_widget, "📊 信息")
+
+    def create_project_overview_tab(self):
+        """创建项目概览标签页"""
+        overview_widget = QWidget()
+        layout = QVBoxLayout(overview_widget)
+        layout.setSpacing(10)
+
+        # 项目信息组
+        project_group = QGroupBox("📋 项目概览")
+        project_layout = QVBoxLayout(project_group)
+        project_layout.setSpacing(10)
+
+        # 按钮栏
+        btn_layout = QHBoxLayout()
+        btn_layout.setSpacing(5)
+
+        self.load_summary_btn = QPushButton(" 加载 global_summary.txt")
+        self.load_summary_btn.clicked.connect(self.load_global_summary)
+        btn_layout.addWidget(self.load_summary_btn)
+
+        self.save_summary_btn = QPushButton(" 保存修改")
+        self.save_summary_btn.clicked.connect(self.save_global_summary)
+        self.save_summary_btn.setStyleSheet("font-weight: bold; background-color: #4caf50; color: white;")
+        btn_layout.addWidget(self.save_summary_btn)
+
+        btn_layout.addStretch()
+        project_layout.addLayout(btn_layout)
+
+        # 统计信息
+        stats_layout = QHBoxLayout()
+        stats_layout.addWidget(QLabel("字数:"))
+        self.summary_word_count = QLabel("0")
+        self.summary_word_count.setStyleSheet("font-weight: bold; color: #2196F3;")
+        stats_layout.addWidget(self.summary_word_count)
+        stats_layout.addStretch()
+        project_layout.addLayout(stats_layout)
+
+        # 编辑区域
+        self.summary_editor = QTextEdit()
+        self.summary_editor.setPlaceholderText("在此编辑全局概览内容...\n\n全局概览是对整个小说项目的总体描述，包括主题、角色关系、剧情发展脉络等关键信息。")
+        self.summary_editor.textChanged.connect(self.update_summary_word_count)
+        project_layout.addWidget(self.summary_editor)
+
+        layout.addWidget(project_group)
+
+        # 快捷操作
+        quick_group = QGroupBox("⚡ 快捷操作")
+        quick_layout = QVBoxLayout(quick_group)
+        quick_layout.setSpacing(5)
+
+        # 示例模板
+        self.use_template_btn = QPushButton(" 插入模板")
+        self.use_template_btn.clicked.connect(self.insert_summary_template)
+        quick_layout.addWidget(self.use_template_btn)
+
+        self.clear_content_btn = QPushButton(" 清空内容")
+        self.clear_content_btn.clicked.connect(lambda: self.summary_editor.clear())
+        quick_layout.addWidget(self.clear_content_btn)
+
+        quick_layout.addStretch()
+        layout.addWidget(quick_group)
+
+        self.editor_tabs.addTab(overview_widget, "📖 概览")
 
     def create_toolbar(self, layout: QVBoxLayout):
         """创建工具栏"""
@@ -364,18 +431,18 @@ class ChapterEditor(QWidget):
         toolbar_layout.addWidget(create_separator("vertical"))
 
         # 功能按钮
-        self.insert_image_btn = QPushButton("🖼️")
+        self.insert_image_btn = QPushButton("")
         self.insert_image_btn.clicked.connect(self.insert_image)
         toolbar_layout.addWidget(self.insert_image_btn)
 
-        self.insert_link_btn = QPushButton("🔗")
+        self.insert_link_btn = QPushButton("")
         self.insert_link_btn.clicked.connect(self.insert_link)
         toolbar_layout.addWidget(self.insert_link_btn)
 
         toolbar_layout.addStretch()
 
         # 保存按钮
-        self.save_btn = QPushButton("💾 保存章节")
+        self.save_btn = QPushButton(" 保存章节")
         self.save_btn.clicked.connect(self.save_current_chapter)
         self.save_btn.setStyleSheet("font-weight: bold; background-color: #4caf50; color: white;")
         toolbar_layout.addWidget(self.save_btn)
@@ -398,7 +465,7 @@ class ChapterEditor(QWidget):
 
         status_layout.addStretch()
 
-        self.auto_save_label = QLabel("💾 自动保存: 开启")
+        self.auto_save_label = QLabel(" 自动保存: 开启")
         status_layout.addWidget(self.auto_save_label)
 
         layout.addWidget(status_frame)
@@ -458,7 +525,7 @@ class ChapterEditor(QWidget):
         self.is_modified = True
         self.update_word_count()
         self.update_statistics()
-        self.status_label.setText("✏️ 编辑中")
+        self.status_label.setText(" 编辑中")
         self.status_label.setStyleSheet("padding: 2px 8px; background-color: #fff3cd; color: #856404; border-radius: 3px;")
         self.content_changed.emit(self.current_chapter, self.chapter_editor.toPlainText())
 
@@ -505,7 +572,7 @@ class ChapterEditor(QWidget):
         self.chapter_editor.setPlainText(f"第{chapter_number}章的内容...")
         self.chapter_title_edit.setText(f"第{chapter_number}章")
         self.is_modified = False
-        self.status_label.setText("💾 已保存")
+        self.status_label.setText(" 已保存")
         self.status_label.setStyleSheet("padding: 2px 8px; background-color: #d4edda; color: #155724; border-radius: 3px;")
 
     def save_current_chapter(self):
@@ -513,7 +580,7 @@ class ChapterEditor(QWidget):
         if self.is_modified:
             # 这里实现保存逻辑
             self.is_modified = False
-            self.status_label.setText("💾 已保存")
+            self.status_label.setText(" 已保存")
             self.status_label.setStyleSheet("padding: 2px 8px; background-color: #d4edda; color: #155724; border-radius: 3px;")
             self.chapter_saved.emit(self.current_chapter)
 
@@ -622,3 +689,214 @@ class ChapterEditor(QWidget):
         """设置当前内容"""
         self.chapter_editor.setPlainText(content)
         self.is_modified = False
+
+    # ========== 项目概览相关方法 ==========
+
+    def load_global_summary(self):
+        """加载全局概览文件"""
+        if not self.current_project_path:
+            show_info_dialog(self, "提示", "请先设置项目路径")
+            return
+
+        summary_file = os.path.join(self.current_project_path, "global_summary.txt")
+        try:
+            if os.path.exists(summary_file):
+                with open(summary_file, 'r', encoding='utf-8') as f:
+                    content = f.read()
+                self.summary_editor.setPlainText(content)
+                show_info_dialog(self, "成功", "已加载 global_summary.txt")
+            else:
+                show_info_dialog(self, "提示", f"文件不存在: {summary_file}\n可以手动创建内容后保存")
+        except Exception as e:
+            show_error_dialog(self, "错误", f"加载文件失败: {str(e)}")
+
+    def save_global_summary(self):
+        """保存全局概览文件"""
+        if not self.current_project_path:
+            show_info_dialog(self, "提示", "请先设置项目路径")
+            return
+
+        summary_file = os.path.join(self.current_project_path, "global_summary.txt")
+        try:
+            content = self.summary_editor.toPlainText().strip()
+            with open(summary_file, 'w', encoding='utf-8') as f:
+                f.write(content)
+            show_info_dialog(self, "成功", "已保存到 global_summary.txt")
+        except Exception as e:
+            show_error_dialog(self, "错误", f"保存文件失败: {str(e)}")
+
+    def update_summary_word_count(self):
+        """更新概览字数统计"""
+        text = self.summary_editor.toPlainText()
+        count = len(text)
+        self.summary_word_count.setText(str(count))
+
+    def insert_summary_template(self):
+        """插入概览模板"""
+        template = """# 小说项目概览
+
+## 项目基本信息
+- **小说标题**: [在此填写小说标题]
+- **作品类型**: [如：奇幻、科幻、现代都市、历史等]
+- **目标字数**: [预计总字数]
+- **目标章节**: [预计章节数]
+
+## 故事主题与核心创意
+[描述小说的核心主题、主要创意和想要表达的思想]
+
+## 世界观设定
+### 时代背景
+[故事发生的时代]
+
+### 世界观特点
+[世界的独特设定，如魔法系统、科技水平等]
+
+### 重要地点
+- [地点1]: [描述]
+- [地点2]: [描述]
+- [地点3]: [描述]
+
+## 主要角色
+### 主角
+- **姓名**: [角色姓名]
+- **身份**: [角色身份]
+- **性格**: [主要性格特点]
+- **背景**: [角色背景故事]
+- **目标**: [角色的主要目标]
+
+### 重要配角
+- **配角1**: [描述]
+- **配角2**: [描述]
+- **配角3**: [描述]
+
+## 故事大纲
+### 第一幕（开头）
+[故事开端，主要矛盾引入]
+
+### 第二幕（发展）
+[故事发展，冲突升级]
+
+### 第三幕（高潮与结局）
+[故事高潮，矛盾解决]
+
+## 剧情发展脉络
+[整个故事的主要线索和发展脉络]
+
+## 主要冲突
+### 外部冲突
+[与外界环境的冲突]
+
+### 内部冲突
+[角色内心的矛盾和成长]
+
+## 主题与意义
+[小说想要探讨的主题和深层含义]
+
+## 写作要点
+- **文风**: [描述希望使用的文风]
+- **节奏**: [故事节奏控制要点]
+- **重点**: [需要重点描写的部分]
+- **注意事项**: [写作时需要注意的事项]
+
+---
+
+*创建时间: """ + QTimer().currentTime().toString() + """*
+"""
+        self.summary_editor.setPlainText(template)
+        show_info_dialog(self, "成功", "已插入概览模板，请根据实际情况修改")
+
+    def setup_context_menus(self):
+        """设置上下文菜单"""
+        # 为章节编辑器添加上下文菜单
+        self.chapter_editor.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.chapter_editor.customContextMenuRequested.connect(self.show_chapter_editor_menu)
+
+        # 为项目概览编辑器添加上下文菜单
+        self.summary_editor.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.summary_editor.customContextMenuRequested.connect(self.show_summary_editor_menu)
+
+    def show_chapter_editor_menu(self, position):
+        """显示章节编辑器的右键菜单"""
+        menu = QMenu(self.chapter_editor)
+
+        # 撤销/重做
+        undo_action = QAction("撤销", self)
+        undo_action.setShortcut("Ctrl+Z")
+        undo_action.triggered.connect(self.chapter_editor.undo)
+        menu.addAction(undo_action)
+
+        redo_action = QAction("重做", self)
+        redo_action.setShortcut("Ctrl+Y")
+        redo_action.triggered.connect(self.chapter_editor.redo)
+        menu.addAction(redo_action)
+
+        menu.addSeparator()
+
+        # 剪切、复制、粘贴
+        cut_action = QAction("剪切", self)
+        cut_action.setShortcut("Ctrl+X")
+        cut_action.triggered.connect(self.chapter_editor.cut)
+        menu.addAction(cut_action)
+
+        copy_action = QAction("复制", self)
+        copy_action.setShortcut("Ctrl+C")
+        copy_action.triggered.connect(self.chapter_editor.copy)
+        menu.addAction(copy_action)
+
+        paste_action = QAction("粘贴", self)
+        paste_action.setShortcut("Ctrl+V")
+        paste_action.triggered.connect(self.chapter_editor.paste)
+        menu.addAction(paste_action)
+
+        menu.addSeparator()
+
+        # 全选
+        select_all_action = QAction("全选", self)
+        select_all_action.setShortcut("Ctrl+A")
+        select_all_action.triggered.connect(self.chapter_editor.selectAll)
+        menu.addAction(select_all_action)
+
+        menu.exec_(self.chapter_editor.mapToGlobal(position))
+
+    def show_summary_editor_menu(self, position):
+        """显示项目概览编辑器的右键菜单"""
+        menu = QMenu(self.summary_editor)
+
+        # 撤销/重做
+        undo_action = QAction("撤销", self)
+        undo_action.setShortcut("Ctrl+Z")
+        undo_action.triggered.connect(self.summary_editor.undo)
+        menu.addAction(undo_action)
+
+        redo_action = QAction("重做", self)
+        redo_action.setShortcut("Ctrl+Y")
+        redo_action.triggered.connect(self.summary_editor.redo)
+        menu.addAction(redo_action)
+
+        menu.addSeparator()
+
+        # 剪切、复制、粘贴
+        cut_action = QAction("剪切", self)
+        cut_action.setShortcut("Ctrl+X")
+        cut_action.triggered.connect(self.summary_editor.cut)
+        menu.addAction(cut_action)
+
+        copy_action = QAction("复制", self)
+        copy_action.setShortcut("Ctrl+C")
+        copy_action.triggered.connect(self.summary_editor.copy)
+        menu.addAction(copy_action)
+
+        paste_action = QAction("粘贴", self)
+        paste_action.setShortcut("Ctrl+V")
+        paste_action.triggered.connect(self.summary_editor.paste)
+        menu.addAction(paste_action)
+
+        menu.addSeparator()
+
+        # 全选
+        select_all_action = QAction("全选", self)
+        select_all_action.setShortcut("Ctrl+A")
+        select_all_action.triggered.connect(self.summary_editor.selectAll)
+        menu.addAction(select_all_action)
+
+        menu.exec_(self.summary_editor.mapToGlobal(position))

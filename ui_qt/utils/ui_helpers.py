@@ -108,6 +108,82 @@ def show_error_dialog(parent: QWidget, title: str, message: str) -> None:
     QMessageBox.critical(parent, title, message, QMessageBox.Ok)
 
 
+def validate_required(value: str, field_name: str) -> bool:
+    """
+    验证必填字段
+
+    Args:
+        value: 要验证的值
+        field_name: 字段名称
+
+    Returns:
+        bool: 是否有效
+
+    Raises:
+        ValueError: 如果字段为空
+    """
+    if not value or not value.strip():
+        raise ValueError(f"{field_name}不能为空")
+    return True
+
+
+def validate_url(url: str) -> bool:
+    """
+    验证URL格式 - 预防性编程
+
+    Args:
+        url: URL字符串
+
+    Returns:
+        bool: 是否有效
+
+    Raises:
+        ValueError: 如果URL格式不正确
+    """
+    if not url or not url.strip():
+        raise ValueError("URL不能为空")
+
+    url_pattern = re.compile(
+        r'^https?://'  # http:// or https://
+        r'(?:(?:[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?\.)+[A-Z]{2,6}\.?|'  # domain...
+        r'localhost|'  # localhost...
+        r'\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})'  # ...or ip
+        r'(?::\d+)?'  # optional port
+        r'(?:/?|[/?]\S+)$', re.IGNORECASE)
+
+    if not url_pattern.match(url):
+        raise ValueError("URL格式不正确")
+    return True
+
+
+def validate_api_key(api_key: str) -> bool:
+    """
+    验证API密钥格式 - 预防性编程
+
+    Args:
+        api_key: API密钥字符串
+
+    Returns:
+        bool: 是否有效
+
+    Raises:
+        ValueError: 如果API密钥格式不正确
+    """
+    if not api_key or not api_key.strip():
+        raise ValueError("API密钥不能为空")
+
+    stripped_key = api_key.strip()
+    if len(stripped_key) < 20:
+        raise ValueError("API密钥长度至少20个字符")
+
+    has_letter = any(c.isalpha() for c in stripped_key)
+    has_digit = any(c.isdigit() for c in stripped_key)
+
+    if not (has_letter and has_digit):
+        raise ValueError("API密钥必须包含字母和数字")
+    return True
+
+
 def show_question_dialog(parent: QWidget, title: str, message: str) -> bool:
     """显示询问对话框
 

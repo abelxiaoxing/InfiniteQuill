@@ -71,12 +71,12 @@ class ProgressDialog(QDialog):
         button_layout = QHBoxLayout()
         button_layout.addStretch()
 
-        self.show_details_btn = QPushButton("📋 显示详情")
+        self.show_details_btn = QPushButton(" 显示详情")
         self.show_details_btn.setCheckable(True)
         self.show_details_btn.clicked.connect(self.toggle_details)
         button_layout.addWidget(self.show_details_btn)
 
-        self.cancel_btn = QPushButton("❌ 取消")
+        self.cancel_btn = QPushButton(" 取消")
         self.cancel_btn.clicked.connect(self.cancel)
         button_layout.addWidget(self.cancel_btn)
 
@@ -106,11 +106,11 @@ class ProgressDialog(QDialog):
         """切换详细信息显示"""
         if show:
             self.details_group.show()
-            self.show_details_btn.setText("📋 隐藏详情")
+            self.show_details_btn.setText(" 隐藏详情")
             self.adjustSize()
         else:
             self.details_group.hide()
-            self.show_details_btn.setText("📋 显示详情")
+            self.show_details_btn.setText(" 显示详情")
             self.adjustSize()
 
     def cancel(self):

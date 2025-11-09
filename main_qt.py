@@ -71,7 +71,7 @@ def check_dependencies():
 
     if missing_modules:
         logging.error(f"缺少依赖模块: {', '.join(missing_modules)}")
-        print(f"\n❌ 缺少依赖模块: {', '.join(missing_modules)}")
+        print(f"\n[错误] 缺少依赖模块: {', '.join(missing_modules)}")
         print("请运行: pip install -r requirements.txt")
         return False
 
@@ -85,20 +85,20 @@ def show_startup_info():
     ║                PySide6现代化界面版本                          ║
     ╚══════════════════════════════════════════════════════════════╝
 
-    🎨 界面特性:
+    界面特性:
     • 完美的中文显示支持
     • 现代化Material Design风格
     • 高性能Qt渲染引擎
     • 响应式布局设计
 
-    🚀 核心功能:
+    核心功能:
     • 多LLM服务支持 (OpenAI/DeepSeek/Gemini等)
     • 智能小说架构生成
     • 章节内容自动创作
     • 向量检索确保连贯性
     • 角色关系管理
 
-    🛠️ 技术栈:
+    技术栈:
     • PySide6 - 现代化GUI框架
     • LangChain - LLM应用框架
     • ChromaDB - 向量数据库
@@ -168,7 +168,7 @@ def main():
         return exit_code
 
     except Exception as e:
-        print(f"❌ 启动失败: {str(e)}")
+        print(f"[错误] 启动失败: {str(e)}")
         logging.exception("应用程序启动失败")
         return 1
 

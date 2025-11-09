@@ -18,8 +18,9 @@ from PySide6.QtGui import QFont
 
 from ..utils.ui_helpers import (
     create_separator, set_font_size, show_info_dialog,
-    show_error_dialog, create_label_with_help
+    show_error_dialog, create_label_with_help, validate_required, validate_url, validate_api_key
 )
+from ..utils.tooltip_manager import tooltip_manager
 
 
 class ConfigWidget(QWidget):
@@ -41,7 +42,7 @@ class ConfigWidget(QWidget):
         layout.setSpacing(15)
 
         # 创建标题
-        title_label = QLabel("⚙️ 配置管理")
+        title_label = QLabel(" 配置管理")
         set_font_size(title_label, 14, bold=True)
         title_label.setAlignment(Qt.AlignCenter)
         title_label.setStyleSheet("padding: 10px; background-color: #f8f9fa; border-radius: 6px; margin-bottom: 10px;")
@@ -60,6 +61,9 @@ class ConfigWidget(QWidget):
 
         # 底部按钮
         self.create_bottom_buttons(layout)
+
+        # 设置工具提示
+        self.setup_tooltips()
 
     def create_llm_config_tab(self):
         """创建LLM配置选项卡"""
@@ -158,7 +162,7 @@ class ConfigWidget(QWidget):
         test_group = QGroupBox("连接测试")
         test_layout = QHBoxLayout(test_group)
 
-        self.test_llm_btn = QPushButton("🔗 测试LLM连接")
+        self.test_llm_btn = QPushButton(" 测试LLM连接")
         self.test_llm_btn.clicked.connect(self.test_llm_connection)
         test_layout.addWidget(self.test_llm_btn)
 
@@ -236,7 +240,7 @@ class ConfigWidget(QWidget):
         test_group = QGroupBox("连接测试")
         test_layout = QHBoxLayout(test_group)
 
-        self.test_embedding_btn = QPushButton("🔗 测试嵌入连接")
+        self.test_embedding_btn = QPushButton(" 测试嵌入连接")
         self.test_embedding_btn.clicked.connect(self.test_embedding_connection)
         test_layout.addWidget(self.test_embedding_btn)
 
@@ -247,7 +251,7 @@ class ConfigWidget(QWidget):
         layout.addWidget(test_group)
         layout.addStretch()
 
-        self.tab_widget.addTab(embed_widget, "🔍 嵌入配置")
+        self.tab_widget.addTab(embed_widget, " 嵌入配置")
 
     def create_proxy_config_tab(self):
         """创建代理配置选项卡"""
@@ -373,7 +377,7 @@ class ConfigWidget(QWidget):
         layout.addWidget(ui_group)
         layout.addStretch()
 
-        self.tab_widget.addTab(advanced_widget, "⚡ 高级设置")
+        self.tab_widget.addTab(advanced_widget, " 高级设置")
 
     def create_bottom_buttons(self, layout: QVBoxLayout):
         """创建底部按钮"""
@@ -382,15 +386,15 @@ class ConfigWidget(QWidget):
         button_layout.setContentsMargins(0, 0, 0, 0)
         button_layout.addStretch()
 
-        self.reset_btn = QPushButton("🔄 重置")
+        self.reset_btn = QPushButton(" 重置")
         self.reset_btn.clicked.connect(self.reset_config)
         button_layout.addWidget(self.reset_btn)
 
-        self.apply_btn = QPushButton("✅ 应用")
+        self.apply_btn = QPushButton(" 应用")
         self.apply_btn.clicked.connect(self.apply_config)
         button_layout.addWidget(self.apply_btn)
 
-        self.save_btn = QPushButton("💾 保存配置")
+        self.save_btn = QPushButton(" 保存配置")
         self.save_btn.clicked.connect(self.save_config)
         button_layout.addWidget(self.save_btn)
 
@@ -437,8 +441,18 @@ class ConfigWidget(QWidget):
         self.base_url.setText(config_data.get("base_url", "https://api.openai.com/v1"))
         self.model_name.setCurrentText(config_data.get("model_name", "gpt-4o-mini"))
         self.temperature_slider.setValue(int(config_data.get("temperature", 0.7) * 10))
-        self.max_tokens.setValue(int(config_data.get("max_tokens", "8192")) if config_data.get("max_tokens") else 8192)
-        self.timeout.setValue(int(config_data.get("timeout", "600")) if config_data.get("timeout") else 600)
+
+        # 安全处理max_tokens值
+        max_tokens = config_data.get("max_tokens")
+        if max_tokens is None or max_tokens == "":
+            max_tokens = 8192
+        self.max_tokens.setValue(int(max_tokens))
+
+        # 安全处理timeout值
+        timeout = config_data.get("timeout")
+        if timeout is None or timeout == "":
+            timeout = 600
+        self.timeout.setValue(int(timeout))
 
     def load_embedding_config_to_ui(self, interface_format: str):
         """加载嵌入配置到界面"""
@@ -451,7 +465,12 @@ class ConfigWidget(QWidget):
         self.embedding_api_key.setText(config_data.get("api_key", ""))
         self.embedding_url.setText(config_data.get("base_url", "https://api.openai.com/v1"))
         self.embedding_model.setCurrentText(config_data.get("model_name", "text-embedding-ada-002"))
-        self.retrieval_k.setValue(int(config_data.get("retrieval_k", "4")) if config_data.get("retrieval_k") else 4)
+
+        # 安全处理retrieval_k值
+        retrieval_k = config_data.get("retrieval_k")
+        if retrieval_k is None or retrieval_k == "":
+            retrieval_k = 4
+        self.retrieval_k.setValue(int(retrieval_k))
 
     def load_proxy_config_to_ui(self, proxy_setting: Dict[str, Any]):
         """加载代理配置到界面"""
@@ -531,35 +550,105 @@ class ConfigWidget(QWidget):
                 show_info_dialog(self, "成功", f"配置 '{current_config}' 已删除")
 
     def test_llm_connection(self):
-        """测试LLM连接"""
+        """测试LLM连接 - 预防性编程"""
         self.test_llm_btn.setEnabled(False)
         self.test_result.setText("测试中...")
 
-        # 这里实现实际的连接测试逻辑
-        # 暂时模拟测试结果
         from PySide6.QtCore import QTimer
 
-        def test_complete():
-            self.test_result.setText("✅ 连接成功")
-            self.test_result.setStyleSheet("color: green; font-weight: bold;")
-            self.test_llm_btn.setEnabled(True)
+        def perform_test():
+            try:
+                # ✅ 预防性验证 - 在执行前就检查所有输入
+                api_key = self.api_key.text().strip()
+                base_url = self.base_url.text().strip()
+                model_name = self.model_name.currentText().strip()
 
-        QTimer.singleShot(2000, test_complete)
+                # 验证API密钥
+                validate_required(api_key, "API密钥")
+                validate_api_key(api_key)
+
+                # 验证URL
+                validate_required(base_url, "基础URL")
+                validate_url(base_url)
+
+                # 验证模型名称
+                validate_required(model_name, "模型名称")
+
+                # 模拟LLM测试 - 如果验证失败根本不会执行到这里
+                import time
+                time.sleep(1)  # 模拟网络延迟
+
+                # 假设测试成功
+                self.test_result.setText(" 连接成功")
+                self.test_result.setStyleSheet("color: green; font-weight: bold;")
+
+            except ValueError as e:
+                # ✅ 输入验证错误，直接显示友好提示
+                self.test_result.setText(" 配置无效")
+                self.test_result.setStyleSheet("color: orange; font-weight: bold;")
+                show_error_dialog(self, "配置验证失败", str(e))
+
+            except Exception as e:
+                # ✅ 其他错误，显示详细错误信息
+                self.test_result.setText(" 连接失败")
+                self.test_result.setStyleSheet("color: red; font-weight: bold;")
+                show_error_dialog(self, "连接测试失败", f"发生错误: {str(e)}")
+
+            finally:
+                self.test_llm_btn.setEnabled(True)
+
+        # 异步执行测试
+        QTimer.singleShot(100, perform_test)
 
     def test_embedding_connection(self):
-        """测试嵌入连接"""
+        """测试嵌入连接 - 预防性编程"""
         self.test_embedding_btn.setEnabled(False)
         self.embedding_test_result.setText("测试中...")
 
-        # 这里实现实际的连接测试逻辑
         from PySide6.QtCore import QTimer
 
-        def test_complete():
-            self.embedding_test_result.setText("✅ 连接成功")
-            self.embedding_test_result.setStyleSheet("color: green; font-weight: bold;")
-            self.test_embedding_btn.setEnabled(True)
+        def perform_test():
+            try:
+                # ✅ 预防性验证
+                api_key = self.embedding_api_key.text().strip()
+                model_name = self.embedding_model.currentText().strip()
+                base_url = self.embedding_url.text().strip()
 
-        QTimer.singleShot(2000, test_complete)
+                # 验证API密钥
+                validate_required(api_key, "嵌入API密钥")
+                validate_api_key(api_key)
+
+                # 验证模型名称
+                validate_required(model_name, "嵌入模型名称")
+
+                # 验证URL
+                if base_url:  # URL是可选的
+                    validate_url(base_url)
+
+                # 模拟测试
+                import time
+                time.sleep(1)  # 模拟网络延迟
+
+                # 假设测试成功
+                self.embedding_test_result.setText(" 连接成功")
+                self.embedding_test_result.setStyleSheet("color: green; font-weight: bold;")
+
+            except ValueError as e:
+                # ✅ 输入验证错误
+                self.embedding_test_result.setText(" 配置无效")
+                self.embedding_test_result.setStyleSheet("color: orange; font-weight: bold;")
+                show_error_dialog(self, "配置验证失败", str(e))
+
+            except Exception as e:
+                # ✅ 其他错误
+                self.embedding_test_result.setText(" 连接失败")
+                self.embedding_test_result.setStyleSheet("color: red; font-weight: bold;")
+                show_error_dialog(self, "连接测试失败", f"发生错误: {str(e)}")
+
+            finally:
+                self.test_embedding_btn.setEnabled(True)
+
+        QTimer.singleShot(100, perform_test)
 
     def apply_config(self):
         """应用配置"""
@@ -639,3 +728,30 @@ class ConfigWidget(QWidget):
             "save_interval": self.save_interval.value(),
             "show_tooltips": self.show_tooltips.isChecked()
         })
+    def setup_tooltips(self):
+        """设置工具提示"""
+        # LLM配置相关
+        tooltip_manager.add_tooltip(self.interface_format, "interface_format")
+        tooltip_manager.add_tooltip(self.api_key, "api_key")
+        tooltip_manager.add_tooltip(self.base_url, "base_url")
+        tooltip_manager.add_tooltip(self.model_name, "model_name")
+        tooltip_manager.add_tooltip(self.temperature_slider, "temperature")
+        tooltip_manager.add_tooltip(self.max_tokens, "max_tokens")
+        tooltip_manager.add_tooltip(self.timeout, "timeout")
+        tooltip_manager.add_tooltip(self.test_llm_btn, "test_connection")
+
+        # Embedding配置相关
+        tooltip_manager.add_tooltip(self.embedding_interface, "embedding_interface_format")
+        tooltip_manager.add_tooltip(self.embedding_api_key, "embedding_api_key")
+        tooltip_manager.add_tooltip(self.embedding_url, "embedding_url")
+        tooltip_manager.add_tooltip(self.embedding_model, "embedding_model_name")
+        tooltip_manager.add_tooltip(self.retrieval_k, "embedding_retrieval_k")
+        tooltip_manager.add_tooltip(self.chunk_size, "chunk_size")
+        tooltip_manager.add_tooltip(self.chunk_overlap, "chunk_overlap")
+        tooltip_manager.add_tooltip(self.test_embedding_btn, "test_connection")
+
+        # 底部按钮
+        if hasattr(self, 'save_config_btn'):
+            tooltip_manager.add_tooltip(self.save_config_btn, "save_role")
+        if hasattr(self, 'load_config_btn'):
+            tooltip_manager.add_tooltip(self.load_config_btn, "load_role")

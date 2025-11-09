@@ -17,8 +17,9 @@ from PySide6.QtGui import QFont
 
 from ..utils.ui_helpers import (
     create_separator, set_font_size, show_info_dialog,
-    show_error_dialog, create_label_with_help
+    show_error_dialog, create_label_with_help, validate_required
 )
+from ..utils.tooltip_manager import tooltip_manager
 
 
 class GenerationWidget(QWidget):
@@ -43,7 +44,7 @@ class GenerationWidget(QWidget):
         layout.setSpacing(15)
 
         # 创建标题
-        title_label = QLabel("🚀 小说生成操作")
+        title_label = QLabel("小说生成操作")
         set_font_size(title_label, 14, bold=True)
         title_label.setAlignment(Qt.AlignCenter)
         # 主题感知的背景色
@@ -76,6 +77,33 @@ class GenerationWidget(QWidget):
 
         # 底部状态和日志
         self.create_bottom_section(layout)
+
+        # 设置工具提示
+        self.setup_tooltips()
+
+    def setup_tooltips(self):
+        """设置工具提示"""
+        # 小说基本设定
+        if hasattr(self, 'novel_title'):
+            tooltip_manager.add_tooltip(self.novel_title, "title")
+        if hasattr(self, 'novel_topic'):
+            tooltip_manager.add_tooltip(self.novel_topic, "topic")
+        if hasattr(self, 'genre'):
+            tooltip_manager.add_tooltip(self.genre, "genre")
+        if hasattr(self, 'num_chapters'):
+            tooltip_manager.add_tooltip(self.num_chapters, "num_chapters")
+        if hasattr(self, 'target_words'):
+            tooltip_manager.add_tooltip(self.target_words, "word_number")
+
+        # 生成操作按钮
+        if hasattr(self, 'generate_architecture_btn'):
+            tooltip_manager.add_tooltip(self.generate_architecture_btn, "generate_architecture")
+        if hasattr(self, 'generate_blueprint_btn'):
+            tooltip_manager.add_tooltip(self.generate_blueprint_btn, "generate_blueprint")
+        if hasattr(self, 'generate_chapter_btn'):
+            tooltip_manager.add_tooltip(self.generate_chapter_btn, "generate_chapter")
+        if hasattr(self, 'consistency_check_btn'):
+            tooltip_manager.add_tooltip(self.consistency_check_btn, "consistency_check")
 
     def create_novel_settings_widget(self) -> QWidget:
         """创建小说设定区域"""
@@ -122,7 +150,7 @@ class GenerationWidget(QWidget):
         layout.addWidget(basic_group)
 
         # 高级设定组
-        advanced_group = QGroupBox("🎨 高级设定")
+        advanced_group = QGroupBox(" 高级设定")
         advanced_layout = QVBoxLayout(advanced_group)
 
         # 世界观设定
@@ -159,7 +187,7 @@ class GenerationWidget(QWidget):
         layout.addWidget(advanced_group)
 
         # 保存路径设置
-        path_group = QGroupBox("💾 保存设置")
+        path_group = QGroupBox(" 保存设置")
         path_layout = QFormLayout(path_group)
 
         path_layout.addRow("保存路径:", self.create_path_selector())
@@ -179,7 +207,7 @@ class GenerationWidget(QWidget):
         self.save_path.setPlaceholderText("选择保存路径...")
         layout.addWidget(self.save_path)
 
-        self.browse_btn = QPushButton("📁 浏览")
+        self.browse_btn = QPushButton(" 浏览")
         self.browse_btn.clicked.connect(self.browse_save_path)
         layout.addWidget(self.browse_btn)
 
@@ -219,7 +247,7 @@ class GenerationWidget(QWidget):
         layout.setSpacing(15)
 
         # 操作说明
-        info_group = QGroupBox("📋 操作说明")
+        info_group = QGroupBox(" 操作说明")
         info_layout = QVBoxLayout(info_group)
 
         info_text = QTextEdit()
@@ -238,7 +266,7 @@ class GenerationWidget(QWidget):
         layout.addWidget(info_group)
 
         # 生成选项
-        options_group = QGroupBox("⚙️ 生成选项")
+        options_group = QGroupBox(" 生成选项")
         options_layout = QFormLayout(options_group)
 
         self.include_characters = QCheckBox("包含主要角色设定")
@@ -256,10 +284,10 @@ class GenerationWidget(QWidget):
         layout.addWidget(options_group)
 
         # 生成按钮
-        button_group = QGroupBox("🚀 开始生成")
+        button_group = QGroupBox(" 开始生成")
         button_layout = QHBoxLayout(button_group)
 
-        self.generate_arch_btn = QPushButton("🏗️ 生成小说架构")
+        self.generate_arch_btn = QPushButton(" 生成小说架构")
         self.generate_arch_btn.clicked.connect(self.generate_architecture)
         self.generate_arch_btn.setStyleSheet("font-weight: bold; padding: 10px; font-size: 11pt;")
         button_layout.addWidget(self.generate_arch_btn)
@@ -267,7 +295,7 @@ class GenerationWidget(QWidget):
         layout.addWidget(button_group)
 
         # 结果显示
-        self.arch_result_group = QGroupBox("📄 生成结果")
+        self.arch_result_group = QGroupBox(" 生成结果")
         arch_layout = QVBoxLayout(self.arch_result_group)
 
         self.arch_result_text = QTextEdit()
@@ -278,15 +306,15 @@ class GenerationWidget(QWidget):
         # 结果操作按钮
         result_btn_layout = QHBoxLayout()
 
-        self.save_arch_btn = QPushButton("💾 保存架构")
+        self.save_arch_btn = QPushButton(" 保存架构")
         self.save_arch_btn.clicked.connect(self.save_architecture)
         result_btn_layout.addWidget(self.save_arch_btn)
 
-        self.edit_arch_btn = QPushButton("✏️ 编辑架构")
+        self.edit_arch_btn = QPushButton(" 编辑架构")
         self.edit_arch_btn.clicked.connect(self.edit_architecture)
         result_btn_layout.addWidget(self.edit_arch_btn)
 
-        self.export_arch_btn = QPushButton("📤 导出架构")
+        self.export_arch_btn = QPushButton(" 导出架构")
         self.export_arch_btn.clicked.connect(self.export_architecture)
         result_btn_layout.addWidget(self.export_arch_btn)
 
@@ -295,7 +323,7 @@ class GenerationWidget(QWidget):
 
         layout.addWidget(self.arch_result_group)
 
-        self.operation_tabs.addTab(arch_widget, "🏗️ 架构生成")
+        self.operation_tabs.addTab(arch_widget, " 架构生成")
 
     def create_blueprint_tab(self):
         """创建章节规划标签页"""
@@ -326,7 +354,7 @@ class GenerationWidget(QWidget):
         layout.addWidget(overview_group)
 
         # 生成控制
-        control_group = QGroupBox("🎛️ 生成控制")
+        control_group = QGroupBox(" 生成控制")
         control_layout = QFormLayout(control_group)
 
         control_layout.addRow("起始章节:", self.create_chapter_range_selector())
@@ -335,14 +363,14 @@ class GenerationWidget(QWidget):
         self.detail_level.addItems(["简要", "标准", "详细"])
         control_layout.addRow("详细程度:", self.detail_level)
 
-        self.generate_chapter_btn = QPushButton("📋 生成章节蓝图")
+        self.generate_chapter_btn = QPushButton(" 生成章节蓝图")
         self.generate_chapter_btn.clicked.connect(self.generate_chapter_blueprint)
         control_layout.addRow("", self.generate_chapter_btn)
 
         layout.addWidget(control_group)
 
         # 章节列表
-        list_group = QGroupBox("📝 章节列表")
+        list_group = QGroupBox(" 章节列表")
         list_layout = QVBoxLayout(list_group)
 
         # 这里应该是一个实际的章节列表控件，暂时用TextEdit代替
@@ -353,7 +381,7 @@ class GenerationWidget(QWidget):
 
         layout.addWidget(list_group)
 
-        self.operation_tabs.addTab(blueprint_widget, "📋 章节规划")
+        self.operation_tabs.addTab(blueprint_widget, " 章节规划")
 
     def create_chapter_generation_tab(self):
         """创建章节生成标签页"""
@@ -362,21 +390,21 @@ class GenerationWidget(QWidget):
         layout.setSpacing(15)
 
         # 章节选择
-        select_group = QGroupBox("🎯 章节选择")
+        select_group = QGroupBox(" 章节选择")
         select_layout = QHBoxLayout(select_group)
 
         select_layout.addWidget(QLabel("选择章节:"))
         self.chapter_selector = QComboBox()
         select_layout.addWidget(self.chapter_selector)
 
-        self.refresh_chapters_btn = QPushButton("🔄 刷新")
+        self.refresh_chapters_btn = QPushButton(" 刷新")
         self.refresh_chapters_btn.clicked.connect(self.refresh_chapter_list)
         select_layout.addWidget(self.refresh_chapters_btn)
 
         layout.addWidget(select_group)
 
         # 生成参数
-        params_group = QGroupBox("⚙️ 生成参数")
+        params_group = QGroupBox(" 生成参数")
         params_layout = QFormLayout(params_group)
 
         self.chapter_word_target = QSpinBox()
@@ -396,21 +424,21 @@ class GenerationWidget(QWidget):
         layout.addWidget(params_group)
 
         # 生成控制
-        generate_group = QGroupBox("🚀 生成控制")
+        generate_group = QGroupBox(" 生成控制")
         generate_layout = QHBoxLayout(generate_group)
 
-        self.generate_single_btn = QPushButton("📝 生成当前章节")
+        self.generate_single_btn = QPushButton(" 生成当前章节")
         self.generate_single_btn.clicked.connect(self.generate_single_chapter)
         generate_layout.addWidget(self.generate_single_btn)
 
-        self.generate_batch_btn = QPushButton("📦 批量生成")
+        self.generate_batch_btn = QPushButton(" 批量生成")
         self.generate_batch_btn.clicked.connect(self.generate_batch_chapters)
         generate_layout.addWidget(self.generate_batch_btn)
 
         layout.addWidget(generate_group)
 
         # 内容预览
-        preview_group = QGroupBox("👁️ 内容预览")
+        preview_group = QGroupBox(" 内容预览")
         preview_layout = QVBoxLayout(preview_group)
 
         self.chapter_preview = QTextEdit()
@@ -420,7 +448,7 @@ class GenerationWidget(QWidget):
 
         layout.addWidget(preview_group)
 
-        self.operation_tabs.addTab(chapter_widget, "📝 章节生成")
+        self.operation_tabs.addTab(chapter_widget, " 章节生成")
 
     def create_batch_operations_tab(self):
         """创建批量操作标签页"""
@@ -436,48 +464,48 @@ class GenerationWidget(QWidget):
         self.knowledge_file.setPlaceholderText("选择知识文件...")
         import_layout.addRow("知识文件:", self.create_file_selector(self.knowledge_file))
 
-        self.import_knowledge_btn = QPushButton("📥 导入知识库")
+        self.import_knowledge_btn = QPushButton(" 导入知识库")
         self.import_knowledge_btn.clicked.connect(self.import_knowledge)
         import_layout.addRow("", self.import_knowledge_btn)
 
         layout.addWidget(import_group)
 
         # 一致性检查
-        consistency_group = QGroupBox("🔍 一致性检查")
+        consistency_group = QGroupBox(" 一致性检查")
         consistency_layout = QVBoxLayout(consistency_group)
 
-        self.check_consistency_btn = QPushButton("🔍 执行一致性检查")
+        self.check_consistency_btn = QPushButton(" 执行一致性检查")
         self.check_consistency_btn.clicked.connect(self.check_consistency)
         consistency_layout.addWidget(self.check_consistency_btn)
 
         layout.addWidget(consistency_group)
 
         # 内容优化
-        optimize_group = QGroupBox("✨ 内容优化")
+        optimize_group = QGroupBox(" 内容优化")
         optimize_layout = QVBoxLayout(optimize_group)
 
-        self.optimize_content_btn = QPushButton("✨ 优化选定内容")
+        self.optimize_content_btn = QPushButton(" 优化选定内容")
         self.optimize_content_btn.clicked.connect(self.optimize_content)
         optimize_layout.addWidget(self.optimize_content_btn)
 
         layout.addWidget(optimize_group)
 
         # 数据导出
-        export_group = QGroupBox("📤 数据导出")
+        export_group = QGroupBox(" 数据导出")
         export_layout = QFormLayout(export_group)
 
         self.export_format = QComboBox()
         self.export_format.addItems(["Word文档", "PDF", "TXT", "Markdown"])
         export_layout.addRow("导出格式:", self.export_format)
 
-        self.export_data_btn = QPushButton("📤 导出小说")
+        self.export_data_btn = QPushButton(" 导出小说")
         self.export_data_btn.clicked.connect(self.export_novel)
         export_layout.addRow("", self.export_data_btn)
 
         layout.addWidget(export_group)
         layout.addStretch()
 
-        self.operation_tabs.addTab(batch_widget, "⚙️ 批量操作")
+        self.operation_tabs.addTab(batch_widget, " 批量操作")
 
     def create_chapter_range_selector(self) -> QWidget:
         """创建章节范围选择器"""
@@ -507,7 +535,7 @@ class GenerationWidget(QWidget):
 
         layout.addWidget(line_edit)
 
-        browse_btn = QPushButton("📁 浏览")
+        browse_btn = QPushButton(" 浏览")
         browse_btn.clicked.connect(lambda: self.browse_file(line_edit))
         layout.addWidget(browse_btn)
 
@@ -535,7 +563,7 @@ class GenerationWidget(QWidget):
         layout.addWidget(separator)
 
         # 日志显示
-        log_group = QGroupBox("📋 操作日志")
+        log_group = QGroupBox(" 操作日志")
         log_layout = QVBoxLayout(log_group)
 
         self.log_text = QTextEdit()
@@ -548,7 +576,7 @@ class GenerationWidget(QWidget):
         # 日志控制按钮
         log_control_layout = QHBoxLayout()
 
-        self.clear_log_btn = QPushButton("🗑️ 清空日志")
+        self.clear_log_btn = QPushButton(" 清空日志")
         self.clear_log_btn.clicked.connect(self.clear_log)
         log_control_layout.addWidget(self.clear_log_btn)
 
@@ -604,37 +632,41 @@ class GenerationWidget(QWidget):
         self.progress_updated.emit(value, message)
 
     def generate_architecture(self):
-        """生成小说架构"""
+        """生成小说架构 - 预防性编程"""
         if self.is_generating:
             show_error_dialog(self, "错误", "正在生成中，请等待完成")
             return
 
-        # 验证输入
-        if not self.novel_title.text().strip():
-            show_error_dialog(self, "错误", "请输入小说标题")
+        # ✅ 预防性验证 - 在开始前就检查所有输入
+        try:
+            novel_title = self.novel_title.text().strip()
+            novel_topic = self.novel_topic.toPlainText().strip()
+
+            validate_required(novel_title, "小说标题")
+            validate_required(novel_topic, "主题描述")
+
+        except ValueError as e:
+            show_error_dialog(self, "验证失败", str(e))
             return
 
-        if not self.novel_topic.toPlainText().strip():
-            show_error_dialog(self, "错误", "请输入主题描述")
-            return
-
+        # ✅ 验证通过后开始生成
         self.is_generating = True
         self.generation_started.emit()
         self.generate_arch_btn.setEnabled(False)
         self.log_message("开始生成小说架构...")
         self.update_progress(10, "初始化生成参数...")
 
-        # 这里实现实际的架构生成逻辑
         # 模拟生成过程
-        for i in range(1, 101):
-            from PySide6.QtCore import QTimer
+        for i in range(11, 101):
+            if not self.is_generating:  # 检查是否被取消
+                return
 
             def update_step(step):
                 self.update_progress(step, f"生成中... {step}%")
                 if step == 100:
                     self.complete_architecture_generation()
 
-            QTimer.singleShot(i * 50, lambda s=i: update_step(s))
+            QTimer.singleShot((step - 10) * 50, lambda s=i: update_step(s))
 
     def complete_architecture_generation(self):
         """完成架构生成"""
@@ -683,14 +715,14 @@ class GenerationWidget(QWidget):
     def edit_architecture(self):
         """编辑架构"""
         self.arch_result_text.setReadOnly(False)
-        self.edit_arch_btn.setText("💾 保存编辑")
+        self.edit_arch_btn.setText(" 保存编辑")
         self.edit_arch_btn.clicked.disconnect()
         self.edit_arch_btn.clicked.connect(self.save_architecture_edits)
 
     def save_architecture_edits(self):
         """保存架构编辑"""
         self.arch_result_text.setReadOnly(True)
-        self.edit_arch_btn.setText("✏️ 编辑架构")
+        self.edit_arch_btn.setText(" 编辑架构")
         self.edit_arch_btn.clicked.disconnect()
         self.edit_arch_btn.clicked.connect(self.edit_architecture)
 
