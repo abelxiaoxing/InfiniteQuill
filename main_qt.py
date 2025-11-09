@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-AI小说生成器 - PySide6版本主入口
+InfiniteQuill - PySide6版本主入口
 现代化的桌面应用程序界面
 """
 
@@ -38,7 +38,7 @@ def setup_logging():
     )
 
     logger = logging.getLogger(__name__)
-    logger.info("AI小说生成器启动中...")
+    logger.info("InfiniteQuill启动中...")
     return logger
 
 def setup_translator(app: QApplication):
@@ -81,7 +81,7 @@ def show_startup_info():
     """显示启动信息"""
     print("""
     ╔══════════════════════════════════════════════════════════════╗
-    ║                    AI小说生成器 v2.0                         ║
+    ║                     InfiniteQuill v2.0                      ║
     ║                PySide6现代化界面版本                          ║
     ╚══════════════════════════════════════════════════════════════╝
 
@@ -125,20 +125,23 @@ def main():
         # 设置国际化
         setup_translator(app)
 
-        # 加载配置
-        config = load_config("config.json") or {}
+        # 加载配置（使用系统用户配置目录）
+        config = load_config() or {}
         logger.info(f"配置加载完成: {len(config)} 个配置项")
 
         # 创建主窗口
         main_window = MainWindow()
         logger.info("主窗口创建完成")
 
+        # 将主窗口保存到app实例中，方便其他组件访问
+        app.main_window = main_window
+
         # 显示主窗口
         main_window.show()
 
         # 如果有启动错误，在状态栏显示
         if not config:
-            main_window.status_bar.set_warning_state("未找到配置文件，请检查config.json")
+            main_window.status_bar.set_warning_state("未找到配置文件，程序将使用默认配置")
 
         # 启动应用程序事件循环
         logger.info("应用程序启动成功，进入事件循环")

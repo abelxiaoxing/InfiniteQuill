@@ -1,30 +1,4 @@
-# AI小说生成器 - PySide6现代化界面
-
-## 🎨 界面重构说明
-
-本版本采用PySide6框架重构了用户界面，解决了原有CustomTkinter界面的中文乱码和性能问题。
-
-### 🚀 主要改进
-
-#### 1. **完美的中文显示支持**
-- Qt框架原生Unicode支持
-- 自动字体回退机制
-- 支持所有中文字符和符号
-
-#### 2. **现代化Material Design风格**
-- 深色/浅色主题切换
-- 响应式布局设计
-- 优雅的动画效果
-
-#### 3. **卓越的性能表现**
-- Qt原生渲染引擎
-- GPU硬件加速
-- 异步处理不卡顿
-
-#### 4. **丰富的功能特性**
-- 模块化组件设计
-- 可定制的主题样式
-- 完整的快捷键支持
+# InfiniteQuill - PySide6现代化界面
 
 ## 📁 新UI架构
 
@@ -55,21 +29,12 @@ ui_qt/
 ### 1. 安装依赖
 
 ```bash
-# 安装PySide6版本依赖
 pip install -r requirements_qt.txt
-
-# 或快速安装核心依赖
-pip install PySide6==6.8.0 PySide6-Addons==6.8.0
 ```
 
 ### 2. 启动新界面
 
-#### 方法一：使用启动器（推荐）
-```bash
-python start_qt_ui.py
-```
-
-#### 方法二：直接运行
+#### 直接运行
 ```bash
 python main_qt.py
 ```
@@ -240,14 +205,10 @@ python main_qt.py --profile
 ```bash
 # 克隆仓库
 git clone <repository-url>
-cd AI_NovelGenerator
+cd InfiniteQuill
 
 # 安装开发依赖
 pip install -r requirements_qt.txt
-pip install -r requirements-dev.txt  # 如果有的话
-
-# 运行测试
-python -m pytest tests/
 
 # 代码格式化
 black ui_qt/
@@ -259,7 +220,3 @@ isort ui_qt/
 本项目遵循原项目的许可证条款。
 
 ---
-
-**🎉 享受全新的创作体验！**
-
-如有问题或建议，欢迎提交Issue或参与讨论。

@@ -26,6 +26,7 @@ from .utils.theme_manager import ThemeManager
 from .dialogs.settings_dialog import SettingsDialog
 from .dialogs.progress_dialog import ProgressDialog
 from config_manager import load_config, save_config
+from novel_generator.project_manager import ProjectManager
 
 
 class MainWindow(QMainWindow):
@@ -39,8 +40,11 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.logger = logging.getLogger(__name__)
-        self.config = load_config("config.json") or {}
+        # 使用系统用户配置目录
+        self.config = load_config() or {}
         self.theme_manager = ThemeManager()
+        # 初始化项目管理器
+        self.project_manager = ProjectManager()
 
         # 初始化界面
         self.setup_ui()
@@ -56,7 +60,7 @@ class MainWindow(QMainWindow):
     def setup_ui(self):
         """设置用户界面"""
         # 窗口基本属性
-        self.setWindowTitle("AI小说生成器 v2.0 - PySide6版本")
+        self.setWindowTitle("InfiniteQuill v2.0 - PySide6版本")
         self.setMinimumSize(1400, 900)
         self.resize(1600, 1000)
 
@@ -195,7 +199,7 @@ class MainWindow(QMainWindow):
         help_menu = menubar.addMenu("帮助(&H)")
 
         about_action = QAction("关于(&A)", self)
-        about_action.setStatusTip("关于AI小说生成器")
+        about_action.setStatusTip("关于InfiniteQuill")
         about_action.triggered.connect(self.show_about)
         help_menu.addAction(about_action)
 
@@ -223,30 +227,244 @@ class MainWindow(QMainWindow):
 
     def update_component_themes(self, theme_name: str):
         """更新组件主题以适配深浅色切换"""
-        if theme_name == "dark":
-            # 深色主题：更柔和的背景色
-            if hasattr(self, 'generation_widget') and hasattr(self.generation_widget, 'title_label'):
-                self.generation_widget.title_label.setStyleSheet("""
-                    padding: 10px;
-                    border-radius: 6px;
-                    margin-bottom: 10px;
-                    background-color: #1b5e20;  /* 深绿色，更柔和 */
-                    color: #ffffff;  /* 白色文字 */
-                    font-weight: bold;
-                    font-size: 14pt;
+        try:
+            self.logger.info(f"开始更新主题: {theme_name}")
+
+            # 更新主窗口背景
+            if theme_name == "dark":
+                # 深色主题样式
+                self.setStyleSheet("""
+                    QMainWindow {
+                        background-color: #2d2d2d;
+                        color: #ffffff;
+                    }
+                    QTabWidget::pane {
+                        border: 1px solid #555;
+                        background-color: #3d3d3d;
+                    }
+                    QTabBar::tab {
+                        background-color: #404040;
+                        color: #ffffff;
+                        padding: 8px 16px;
+                        margin-right: 2px;
+                        border-top-left-radius: 4px;
+                        border-top-right-radius: 4px;
+                    }
+                    QTabBar::tab:selected {
+                        background-color: #3d3d3d;
+                    }
+                    QTabBar::tab:hover {
+                        background-color: #505050;
+                    }
+                    QGroupBox {
+                        font-weight: bold;
+                        border: 2px solid #555;
+                        border-radius: 5px;
+                        margin-top: 10px;
+                        padding-top: 10px;
+                        background-color: #3d3d3d;
+                        color: #ffffff;
+                    }
+                    QGroupBox::title {
+                        subcontrol-origin: margin;
+                        left: 10px;
+                        padding: 0 5px 0 5px;
+                        color: #ffffff;
+                    }
                 """)
-        else:
-            # 浅色主题：恢复亮绿色
-            if hasattr(self, 'generation_widget') and hasattr(self.generation_widget, 'title_label'):
-                self.generation_widget.title_label.setStyleSheet("""
-                    padding: 10px;
-                    border-radius: 6px;
-                    margin-bottom: 10px;
-                    background-color: #e8f5e8;  /* 亮绿色 */
-                    color: #333333;  /* 黑色文字 */
-                    font-weight: bold;
-                    font-size: 14pt;
+            else:
+                # 浅色主题样式
+                self.setStyleSheet("""
+                    QMainWindow {
+                        background-color: #f5f5f5;
+                        color: #333333;
+                    }
+                    QTabWidget::pane {
+                        border: 1px solid #ddd;
+                        background-color: #ffffff;
+                    }
+                    QTabBar::tab {
+                        background-color: #e0e0e0;
+                        color: #333333;
+                        padding: 8px 16px;
+                        margin-right: 2px;
+                        border-top-left-radius: 4px;
+                        border-top-right-radius: 4px;
+                    }
+                    QTabBar::tab:selected {
+                        background-color: #ffffff;
+                    }
+                    QTabBar::tab:hover {
+                        background-color: #f0f0f0;
+                    }
+                    QGroupBox {
+                        font-weight: bold;
+                        border: 2px solid #ddd;
+                        border-radius: 5px;
+                        margin-top: 10px;
+                        padding-top: 10px;
+                        background-color: #ffffff;
+                        color: #333333;
+                    }
+                    QGroupBox::title {
+                        subcontrol-origin: margin;
+                        left: 10px;
+                        padding: 0 5px 0 5px;
+                        color: #333333;
+                    }
                 """)
+
+            # 更新生成组件标题
+            self._update_generation_widget_theme(theme_name)
+
+            # 更新章节编辑器主题
+            self._update_chapter_editor_theme(theme_name)
+
+            # 更新角色管理器主题
+            self._update_role_manager_theme(theme_name)
+
+            # 更新状态栏主题
+            self._update_status_bar_theme(theme_name)
+
+            self.logger.info(f"主题更新完成: {theme_name}")
+
+        except Exception as e:
+            self.logger.error(f"主题更新失败: {str(e)}")
+
+    def _update_generation_widget_theme(self, theme_name: str):
+        """更新生成组件主题"""
+        if not hasattr(self, 'generation_widget'):
+            return
+
+        try:
+            widget = self.generation_widget
+            if theme_name == "dark":
+                # 深色主题
+                if hasattr(widget, 'title_label'):
+                    widget.title_label.setStyleSheet("""
+                        padding: 10px;
+                        border-radius: 6px;
+                        margin-bottom: 10px;
+                        background-color: #1b5e20;
+                        color: #ffffff;
+                        font-weight: bold;
+                        font-size: 14pt;
+                    """)
+            else:
+                # 浅色主题
+                if hasattr(widget, 'title_label'):
+                    widget.title_label.setStyleSheet("""
+                        padding: 10px;
+                        border-radius: 6px;
+                        margin-bottom: 10px;
+                        background-color: #e8f5e8;
+                        color: #333333;
+                        font-weight: bold;
+                        font-size: 14pt;
+                    """)
+        except Exception as e:
+            self.logger.error(f"更新生成组件主题失败: {str(e)}")
+
+    def _update_chapter_editor_theme(self, theme_name: str):
+        """更新章节编辑器主题"""
+        if not hasattr(self, 'chapter_editor'):
+            return
+
+        try:
+            widget = self.chapter_editor
+            if theme_name == "dark":
+                # 深色主题
+                if hasattr(widget, 'title_label'):
+                    widget.title_label.setStyleSheet("""
+                        padding: 10px;
+                        border-radius: 6px;
+                        margin-bottom: 10px;
+                        background-color: #1565c0;
+                        color: #ffffff;
+                        font-weight: bold;
+                        font-size: 14pt;
+                    """)
+            else:
+                # 浅色主题
+                if hasattr(widget, 'title_label'):
+                    widget.title_label.setStyleSheet("""
+                        padding: 10px;
+                        border-radius: 6px;
+                        margin-bottom: 10px;
+                        background-color: #e3f2fd;
+                        color: #333333;
+                        font-weight: bold;
+                        font-size: 14pt;
+                    """)
+        except Exception as e:
+            self.logger.error(f"更新章节编辑器主题失败: {str(e)}")
+
+    def _update_role_manager_theme(self, theme_name: str):
+        """更新角色管理器主题"""
+        if not hasattr(self, 'role_manager'):
+            return
+
+        try:
+            widget = self.role_manager
+            if theme_name == "dark":
+                # 深色主题
+                if hasattr(widget, 'title_label'):
+                    widget.title_label.setStyleSheet("""
+                        padding: 10px;
+                        border-radius: 6px;
+                        margin-bottom: 10px;
+                        background-color: #6a1b9a;
+                        color: #ffffff;
+                        font-weight: bold;
+                        font-size: 14pt;
+                    """)
+            else:
+                # 浅色主题
+                if hasattr(widget, 'title_label'):
+                    widget.title_label.setStyleSheet("""
+                        padding: 10px;
+                        border-radius: 6px;
+                        margin-bottom: 10px;
+                        background-color: #f3e5f5;
+                        color: #333333;
+                        font-weight: bold;
+                        font-size: 14pt;
+                    """)
+        except Exception as e:
+            self.logger.error(f"更新角色管理器主题失败: {str(e)}")
+
+    def _update_status_bar_theme(self, theme_name: str):
+        """更新状态栏主题"""
+        if not hasattr(self, 'status_bar'):
+            return
+
+        try:
+            if theme_name == "dark":
+                # 深色主题
+                self.status_bar.setStyleSheet("""
+                    QStatusBar {
+                        background-color: #1e1e1e;
+                        color: #ffffff;
+                        border-top: 1px solid #555;
+                    }
+                    QStatusBar::item {
+                        border: none;
+                    }
+                """)
+            else:
+                # 浅色主题
+                self.status_bar.setStyleSheet("""
+                    QStatusBar {
+                        background-color: #f0f0f0;
+                        color: #333333;
+                        border-top: 1px solid #ddd;
+                    }
+                    QStatusBar::item {
+                        border: none;
+                    }
+                """)
+        except Exception as e:
+            self.logger.error(f"更新状态栏主题失败: {str(e)}")
 
     def on_config_changed(self, new_config: Dict[str, Any]):
         """配置变更处理"""
@@ -273,14 +491,43 @@ class MainWindow(QMainWindow):
 
     def new_project(self):
         """新建项目"""
+        # 弹出对话框让用户选择项目位置
+        from PySide6.QtWidgets import QInputDialog
         directory = QFileDialog.getExistingDirectory(
             self, "选择项目保存位置", "",
             QFileDialog.ShowDirsOnly
         )
         if directory:
-            self.current_project_path = directory
-            self.status_bar.show_message(f"项目路径: {directory}", 3000)
-            # 这里可以添加项目初始化逻辑
+            # 询问项目名称
+            project_name, ok = QInputDialog.getText(
+                self, "新建项目", "请输入项目名称:", text="未命名小说"
+            )
+            if not ok or not project_name.strip():
+                return
+
+            project_name = project_name.strip()
+
+            # 使用项目管理器创建项目
+            try:
+                success = self.project_manager.create_project(directory, project_name)
+                if success:
+                    self.current_project_path = directory
+                    self.status_bar.set_project_path(directory)
+                    self.status_bar.show_message(f"项目 '{project_name}' 创建成功", 3000)
+
+                    # 初始化子组件
+                    self.on_project_created(directory)
+
+                    QMessageBox.information(
+                        self, "成功",
+                        f"项目 '{project_name}' 创建成功！\n"
+                        f"项目路径: {directory}"
+                    )
+                else:
+                    QMessageBox.critical(self, "错误", "创建项目失败！")
+            except Exception as e:
+                self.logger.error(f"创建项目失败: {e}")
+                QMessageBox.critical(self, "错误", f"创建项目时发生错误:\n{str(e)}")
 
     def open_project(self):
         """打开项目"""
@@ -289,22 +536,48 @@ class MainWindow(QMainWindow):
             QFileDialog.ShowDirsOnly
         )
         if directory:
-            self.current_project_path = directory
+            # 检查是否是有效的项目
+            if not self.project_manager.is_valid_project(directory):
+                QMessageBox.warning(
+                    self, "无效项目",
+                    "选中的文件夹不是有效的项目目录！\n"
+                    "请选择一个包含 project.json 文件的项目目录。"
+                )
+                return
+
+            # 加载项目
             self.load_project(directory)
 
     def load_project(self, project_path: str):
         """加载项目"""
         try:
-            # 这里实现项目加载逻辑
-            self.status_bar.show_message(f"项目已加载: {project_path}", 3000)
+            success = self.project_manager.load_project(project_path)
+            if success:
+                self.current_project_path = project_path
+                self.status_bar.set_project_path(project_path)
+
+                # 获取项目信息
+                info = self.project_manager.get_project_info()
+                project_name = info.get('name', '未知项目')
+
+                # 初始化子组件
+                self.on_project_loaded(project_path)
+
+                self.status_bar.show_message(f"项目 '{project_name}' 已加载", 3000)
+                self.logger.info(f"项目已加载: {project_path}")
+
+            else:
+                QMessageBox.critical(self, "错误", "加载项目失败！")
+
         except Exception as e:
-            QMessageBox.critical(self, "错误", f"加载项目失败: {str(e)}")
+            self.logger.error(f"加载项目失败: {e}")
+            QMessageBox.critical(self, "错误", f"加载项目时发生错误:\n{str(e)}")
 
     def save_config(self):
-        """保存配置"""
+        """保存配置到系统用户配置目录"""
         try:
-            save_config("config.json", self.config)
-            self.status_bar.show_message("配置已保存", 3000)
+            save_config(self.config, None)
+            self.status_bar.show_message("配置已保存到用户配置目录", 3000)
         except Exception as e:
             QMessageBox.critical(self, "错误", f"保存配置失败: {str(e)}")
 
@@ -326,8 +599,8 @@ class MainWindow(QMainWindow):
         """显示关于对话框"""
         QMessageBox.about(
             self,
-            "关于AI小说生成器",
-            """AI小说生成器 v2.0 (PySide6版本)
+            "关于InfiniteQuill",
+            """InfiniteQuill v2.0 (PySide6版本)
 
 基于大语言模型的智能小说创作工具
 
@@ -338,7 +611,7 @@ class MainWindow(QMainWindow):
 • 向量检索确保剧情连贯性
 • 角色管理与关系图谱
 
-开发团队: NovelGenerator Team
+开发团队: InfiniteQuill Team
 Copyright © 2025 All rights reserved."""
         )
 
@@ -363,3 +636,57 @@ Copyright © 2025 All rights reserved."""
 
         event.accept()
         self.logger.info("应用程序已退出")
+
+    def on_project_created(self, project_path: str):
+        """项目创建后的初始化处理"""
+        try:
+            self.logger.info(f"项目创建后初始化: {project_path}")
+
+            # 初始化各个组件的项目上下文
+            if hasattr(self, 'chapter_editor') and self.chapter_editor:
+                self.chapter_editor.load_project(project_path)
+
+            if hasattr(self, 'role_manager') and self.role_manager:
+                self.role_manager.load_project(project_path)
+
+            if hasattr(self, 'generation_widget') and self.generation_widget:
+                self.generation_widget.set_project_path(project_path)
+
+            # 刷新所有组件
+            if hasattr(self, 'chapter_editor') and self.chapter_editor:
+                self.chapter_editor.refresh_chapter_list()
+
+            if hasattr(self, 'role_manager') and self.role_manager:
+                self.role_manager.refresh_role_list()
+
+            self.logger.info("项目创建后初始化完成")
+
+        except Exception as e:
+            self.logger.error(f"项目创建后初始化失败: {e}")
+
+    def on_project_loaded(self, project_path: str):
+        """项目加载后的初始化处理"""
+        try:
+            self.logger.info(f"项目加载后初始化: {project_path}")
+
+            # 初始化各个组件的项目上下文
+            if hasattr(self, 'chapter_editor') and self.chapter_editor:
+                self.chapter_editor.load_project(project_path)
+
+            if hasattr(self, 'role_manager') and self.role_manager:
+                self.role_manager.load_project(project_path)
+
+            if hasattr(self, 'generation_widget') and self.generation_widget:
+                self.generation_widget.set_project_path(project_path)
+
+            # 刷新所有组件
+            if hasattr(self, 'chapter_editor') and self.chapter_editor:
+                self.chapter_editor.refresh_chapter_list()
+
+            if hasattr(self, 'role_manager') and self.role_manager:
+                self.role_manager.refresh_role_list()
+
+            self.logger.info("项目加载后初始化完成")
+
+        except Exception as e:
+            self.logger.error(f"项目加载后初始化失败: {e}")

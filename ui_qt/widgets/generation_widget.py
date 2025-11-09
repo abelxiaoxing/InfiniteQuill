@@ -21,6 +21,96 @@ from ..utils.ui_helpers import (
 )
 from ..utils.tooltip_manager import tooltip_manager
 
+# 导入后端生成器
+import sys
+import os
+import logging
+sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+from novel_generator.architecture import Novel_architecture_generate
+from llm_adapters import create_llm_adapter
+
+logger = logging.getLogger(__name__)
+
+
+class ArchitectureGenerationWorker(QThread):
+    """架构生成工作线程"""
+
+    # 信号定义
+    progress = Signal(int, str)  # 进度更新
+    completed = Signal(str)  # 完成信号，传递结果
+    error = Signal(str)  # 错误信号
+
+    def __init__(self, config: Dict[str, Any], novel_settings: Dict[str, Any], save_path: str):
+        """
+        初始化工作线程
+
+        Args:
+            config: LLM配置
+            novel_settings: 小说设定
+            save_path: 保存路径
+        """
+        super().__init__()
+        self.config = config
+        self.novel_settings = novel_settings
+        self.save_path = save_path
+        self._is_running = True
+
+    def run(self):
+        """在线程中执行架构生成"""
+        try:
+            self.progress.emit(20, "正在连接LLM服务...")
+            logger.info("开始生成小说架构")
+
+            # 获取LLM配置
+            llm_config = self.config.get('llm', {})
+            interface_format = llm_config.get('interface', 'openai')
+            api_key = llm_config.get('api_key', '')
+            base_url = llm_config.get('base_url', '')
+            model = llm_config.get('model', 'gpt-3.5-turbo')
+            temperature = llm_config.get('temperature', 0.7)
+            max_tokens = llm_config.get('max_tokens', 2048)
+            timeout = llm_config.get('timeout', 60)
+
+            # 调用架构生成器
+            self.progress.emit(30, "正在生成小说架构...")
+            Novel_architecture_generate(
+                interface_format=interface_format,
+                api_key=api_key,
+                base_url=base_url,
+                llm_model=model,
+                topic=self.novel_settings['topic'],
+                genre=self.novel_settings['genre'],
+                number_of_chapters=self.novel_settings['chapter_count'],
+                word_number=self.novel_settings['word_count'],
+                filepath=self.save_path,
+                user_guidance=self.novel_settings.get('worldview', ''),
+                temperature=temperature,
+                max_tokens=max_tokens,
+                timeout=timeout
+            )
+
+            self.progress.emit(90, "正在保存结果...")
+
+            # 读取生成的文件
+            architecture_file = os.path.join(self.save_path, "Novel_architecture.txt")
+            if os.path.exists(architecture_file):
+                with open(architecture_file, 'r', encoding='utf-8') as f:
+                    result = f.read()
+                self.completed.emit(result)
+                self.progress.emit(100, "架构生成完成！")
+            else:
+                raise FileNotFoundError("生成的文件未找到")
+
+        except Exception as e:
+            error_msg = f"生成失败: {str(e)}"
+            logger.error(error_msg, exc_info=True)
+            self.error.emit(error_msg)
+
+    def stop(self):
+        """停止线程"""
+        self._is_running = False
+        self.terminate()
+
 
 class GenerationWidget(QWidget):
     """生成操作组件"""
@@ -43,20 +133,6 @@ class GenerationWidget(QWidget):
         layout.setContentsMargins(10, 10, 10, 10)
         layout.setSpacing(15)
 
-        # 创建标题
-        title_label = QLabel("小说生成操作")
-        set_font_size(title_label, 14, bold=True)
-        title_label.setAlignment(Qt.AlignCenter)
-        # 主题感知的背景色
-        title_label.setStyleSheet("""
-            padding: 10px;
-            border-radius: 6px;
-            margin-bottom: 10px;
-            background-color: #e8f5e8; /* 默认浅色主题 */
-            color: #333333; /* 默认文字色 */
-        """)
-        self.title_label = title_label  # 保存引用以便主题切换
-        layout.addWidget(title_label)
 
         # 创建主分割器
         main_splitter = QSplitter(Qt.Horizontal)
@@ -632,12 +708,12 @@ class GenerationWidget(QWidget):
         self.progress_updated.emit(value, message)
 
     def generate_architecture(self):
-        """生成小说架构 - 预防性编程"""
+        """生成小说架构"""
         if self.is_generating:
             show_error_dialog(self, "错误", "正在生成中，请等待完成")
             return
 
-        # ✅ 预防性验证 - 在开始前就检查所有输入
+        # 验证输入
         try:
             novel_title = self.novel_title.text().strip()
             novel_topic = self.novel_topic.toPlainText().strip()
@@ -645,61 +721,81 @@ class GenerationWidget(QWidget):
             validate_required(novel_title, "小说标题")
             validate_required(novel_topic, "主题描述")
 
+            # 检查是否配置了LLM
+            if 'llm' not in self.config or not self.config['llm'].get('api_key'):
+                show_error_dialog(self, "配置错误", "请先在配置管理中设置LLM API密钥")
+                return
+
+            # 检查保存路径
+            save_path = self.save_path.text().strip()
+            if not save_path:
+                show_error_dialog(self, "验证失败", "请选择保存路径")
+                return
+
         except ValueError as e:
             show_error_dialog(self, "验证失败", str(e))
             return
 
-        # ✅ 验证通过后开始生成
+        # 准备参数
+        novel_settings = {
+            'title': novel_title,
+            'topic': novel_topic,
+            'genre': self.novel_genre.currentText(),
+            'chapter_count': self.chapter_count.value(),
+            'word_count': self.word_count.value(),
+            'worldview': self.worldview_text.toPlainText().strip(),
+            'writing_style': self.writing_style.currentText(),
+            'target_readers': self.target_readers.currentText()
+        }
+
+        # 创建并启动工作线程
+        self.worker = ArchitectureGenerationWorker(
+            config=self.config,
+            novel_settings=novel_settings,
+            save_path=save_path
+        )
+
+        # 连接信号
+        self.worker.progress.connect(self.update_progress)
+        self.worker.completed.connect(self.on_architecture_completed)
+        self.worker.error.connect(self.on_architecture_error)
+
+        # 更新UI状态
         self.is_generating = True
         self.generation_started.emit()
         self.generate_arch_btn.setEnabled(False)
         self.log_message("开始生成小说架构...")
-        self.update_progress(10, "初始化生成参数...")
+        self.update_progress(10, "准备中...")
 
-        # 模拟生成过程
-        for i in range(11, 101):
-            if not self.is_generating:  # 检查是否被取消
-                return
+        # 启动线程
+        self.worker.start()
+        self.log_message("架构生成任务已启动")
 
-            def update_step(step):
-                self.update_progress(step, f"生成中... {step}%")
-                if step == 100:
-                    self.complete_architecture_generation()
-
-            QTimer.singleShot((step - 10) * 50, lambda s=i: update_step(s))
-
-    def complete_architecture_generation(self):
-        """完成架构生成"""
+    def on_architecture_completed(self, result: str):
+        """架构生成完成"""
         self.is_generating = False
         self.generation_finished.emit()
         self.generate_arch_btn.setEnabled(True)
 
-        # 模拟生成的架构内容
-        result = f"""# {self.novel_title.text()}
-
-## 世界观设定
-时代背景：{self.worldview_text.toPlainText() or "现代都市"}
-题材类型：{self.novel_genre.currentText()}
-写作风格：{self.writing_style.currentText()}
-
-## 主要角色
-1. 主角：张三 - 身份神秘，能力超群
-2. 配角：李四 - 主角挚友，性格开朗
-3. 反派：王五 - 城市地下势力的首领
-
-## 故事梗概
-故事围绕{self.novel_topic.toPlainText()}展开，主角在{self.novel_genre.currentText()}的世界中面临各种挑战...
-
-## 章节规划
-总共{self.chapter_count.value()}章，预计{self.chapter_count.value() * self.word_count.value()}字
-
-## 核心主题
-{self.novel_topic.toPlainText()}
-"""
-
+        # 显示结果
         self.arch_result_text.setPlainText(result)
         self.log_message("架构生成完成！")
         self.update_progress(100, "架构生成完成")
+        show_info_dialog(self, "成功", "小说架构生成完成！")
+
+    def on_architecture_error(self, error_msg: str):
+        """架构生成错误"""
+        self.is_generating = False
+        self.generation_finished.emit()
+        self.generate_arch_btn.setEnabled(True)
+
+        self.log_message(f"架构生成失败: {error_msg}")
+        self.update_progress(0, "生成失败")
+        show_error_dialog(self, "生成失败", error_msg)
+
+    def complete_architecture_generation(self):
+        """完成架构生成 - 已弃用，使用on_architecture_completed代替"""
+        pass
 
     def save_architecture(self):
         """保存架构"""
@@ -785,29 +881,3 @@ class GenerationWidget(QWidget):
     def clear_log(self):
         """清空日志"""
         self.log_text.clear()
-    def update_component_themes(self, theme_name: str):
-        """更新组件主题以适配深浅色切换"""
-        if theme_name == "dark":
-            # 深色主题：更柔和的背景色
-            if hasattr(self, 'title_label') and self.title_label:
-                self.title_label.setStyleSheet("""
-                    padding: 10px;
-                    border-radius: 6px;
-                    margin-bottom: 10px;
-                    background-color: #1b5e20;  /* 深绿色，更柔和 */
-                    color: #ffffff;  /* 白色文字 */
-                    font-weight: bold;
-                    font-size: 14pt;
-                """)
-        else:
-            # 浅色主题：恢复亮绿色
-            if hasattr(self, 'title_label') and self.title_label:
-                self.title_label.setStyleSheet("""
-                    padding: 10px;
-                    border-radius: 6px;
-                    margin-bottom: 10px;
-                    background-color: #e8f5e8;  /* 亮绿色 */
-                    color: #333333;  /* 黑色文字 */
-                    font-weight: bold;
-                    font-size: 14pt;
-                """)

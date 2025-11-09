@@ -5,13 +5,14 @@
 提供角色创建、编辑、导入导出等功能的现代化界面
 """
 
+import threading
 from typing import Dict, Any, Optional, List
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QSplitter,
     QGroupBox, QLabel, QLineEdit, QTextEdit, QSpinBox,
     QPushButton, QComboBox, QFormLayout, QGridLayout,
     QMessageBox, QCheckBox, QFrame, QTreeWidget, QTreeWidgetItem,
-    QListWidget, QListWidgetItem, QTabWidget, QProgressBar,
+    QListWidget, QListWidgetItem, QTabWidget, QProgressBar, QProgressDialog,
     QScrollArea, QSizePolicy, QDialog, QInputDialog
 )
 from PySide6.QtCore import Signal, Qt, QTimer
@@ -22,6 +23,7 @@ from ..utils.ui_helpers import (
     show_error_dialog, create_label_with_help, validate_required
 )
 from ..utils.tooltip_manager import tooltip_manager
+from novel_generator.data_manager import DataManager
 
 
 class RoleManager(QWidget):
@@ -33,26 +35,31 @@ class RoleManager(QWidget):
     role_created = Signal(str, dict)
     role_deleted = Signal(str)
 
-    def __init__(self, config: Dict[str, Any], parent=None):
+    def __init__(self, config: Dict[str, Any], data_manager=None, parent=None):
         super().__init__(parent)
         self.config = config.copy()
+        self.data_manager = data_manager
         self.current_role = ""
         self.current_project_path = ""
+        self.pending_role_data = None  # 存储待处理的角色数据
+        self.pending_role_data_lock = threading.Lock()  # 线程安全锁
+        self.all_roles = {}  # 存储所有角色的数据 {name: {data}}
+        self.current_filter = ""  # 当前过滤文本
+        self.current_category = "全部"  # 当前分类过滤
         self.setup_ui()
         self.load_sample_data()
 
+        # 使用事件循环启动后执行的定时器
+        QTimer.singleShot(0, self._initialize_timer)
+
     def setup_ui(self):
         """设置UI布局"""
+        import logging
+        logger = logging.getLogger(__name__)
+
         layout = QVBoxLayout(self)
         layout.setContentsMargins(10, 10, 10, 10)
         layout.setSpacing(10)
-
-        # 创建标题
-        title_label = QLabel(" 角色管理器")
-        set_font_size(title_label, 14, bold=True)
-        title_label.setAlignment(Qt.AlignCenter)
-        title_label.setStyleSheet("padding: 10px; background-color: #f3e5f5; border-radius: 6px; margin-bottom: 10px;")
-        layout.addWidget(title_label)
 
         # 创建主分割器
         main_splitter = QSplitter(Qt.Horizontal)
@@ -76,6 +83,21 @@ class RoleManager(QWidget):
 
         # 设置工具提示
         self.setup_tooltips()
+
+        logger.info("UI布局完成")
+
+    def _initialize_timer(self):
+        """初始化定时器（在事件循环启动后执行）"""
+        import logging
+        logger = logging.getLogger(__name__)
+
+        # 创建定时器用于定期轮询待处理的角色数据
+        self.ui_update_timer = QTimer()
+        self.ui_update_timer.setSingleShot(False)  # 改为重复定时器
+        self.ui_update_timer.timeout.connect(self._check_pending_role_data)
+        self.ui_update_timer.start(500)  # 每500ms轮询一次
+
+        logger.info("✅ 定时器初始化完成 - 每500ms轮询一次")
 
     def setup_tooltips(self):
         """设置工具提示"""
@@ -124,9 +146,11 @@ class RoleManager(QWidget):
         self.role_search = QLineEdit()
         self.role_search.setPlaceholderText("输入角色名、标签或特征...")
         self.role_search.textChanged.connect(self.filter_roles)
+        self.role_search.returnPressed.connect(self.search_roles)  # 回车键搜索
         search_layout.addWidget(self.role_search)
 
-        self.search_btn = QPushButton("")
+        self.search_btn = QPushButton("搜索")
+        self.search_btn.setToolTip("搜索角色")
         self.search_btn.clicked.connect(self.search_roles)
         search_layout.addWidget(self.search_btn)
 
@@ -144,18 +168,18 @@ class RoleManager(QWidget):
         # 分类操作按钮
         category_btn_layout = QHBoxLayout()
 
-        self.add_category_btn = QPushButton("➕")
-        self.add_category_btn.setToolTip("添加分类")
+        self.add_category_btn = QPushButton("添加分类")
+        self.add_category_btn.setToolTip("添加新分类")
         self.add_category_btn.clicked.connect(self.add_category)
         category_btn_layout.addWidget(self.add_category_btn)
 
-        self.edit_category_btn = QPushButton("")
-        self.edit_category_btn.setToolTip("编辑分类")
+        self.edit_category_btn = QPushButton("编辑分类")
+        self.edit_category_btn.setToolTip("编辑选中分类")
         self.edit_category_btn.clicked.connect(self.edit_category)
         category_btn_layout.addWidget(self.edit_category_btn)
 
-        self.delete_category_btn = QPushButton("")
-        self.delete_category_btn.setToolTip("删除分类")
+        self.delete_category_btn = QPushButton("删除分类")
+        self.delete_category_btn.setToolTip("删除选中分类")
         self.delete_category_btn.clicked.connect(self.delete_category)
         category_btn_layout.addWidget(self.delete_category_btn)
 
@@ -170,14 +194,14 @@ class RoleManager(QWidget):
 
         # 列表视图切换
         view_switch = QHBoxLayout()
-        self.grid_view_btn = QPushButton("⚏")
+        self.grid_view_btn = QPushButton("网格")
         self.grid_view_btn.setCheckable(True)
         self.grid_view_btn.setChecked(True)
         self.grid_view_btn.setToolTip("网格视图")
         self.grid_view_btn.clicked.connect(lambda: self.switch_view("grid"))
         view_switch.addWidget(self.grid_view_btn)
 
-        self.list_view_btn = QPushButton("☰")
+        self.list_view_btn = QPushButton("列表")
         self.list_view_btn.setCheckable(True)
         self.list_view_btn.setToolTip("列表视图")
         self.list_view_btn.clicked.connect(lambda: self.switch_view("list"))
@@ -254,7 +278,7 @@ class RoleManager(QWidget):
         self.role_name.textChanged.connect(self.on_basic_info_changed)
         name_layout.addWidget(self.role_name)
 
-        self.role_avatar = QPushButton("")
+        self.role_avatar = QPushButton("头像")
         self.role_avatar.setToolTip("选择角色头像")
         self.role_avatar.clicked.connect(self.select_avatar)
         name_layout.addWidget(self.role_avatar)
@@ -434,7 +458,7 @@ class RoleManager(QWidget):
 
         layout.addWidget(education_group)
 
-        parent.addTab(background_widget, "📚 背景")
+        parent.addTab(background_widget, "背景")
 
     def create_relationships_section(self, layout: QVBoxLayout):
         """创建角色关系区域"""
@@ -522,11 +546,11 @@ class RoleManager(QWidget):
         action_layout.addWidget(create_separator("vertical"))
 
         # 模板操作
-        self.use_template_btn = QPushButton("📝 使用模板")
+        self.use_template_btn = QPushButton("使用模板")
         self.use_template_btn.clicked.connect(self.use_role_template)
         action_layout.addWidget(self.use_template_btn)
 
-        self.save_as_template_btn = QPushButton("💾 保存模板")
+        self.save_as_template_btn = QPushButton("保存模板")
         self.save_as_template_btn.clicked.connect(self.save_as_template)
         action_layout.addWidget(self.save_as_template_btn)
 
@@ -543,19 +567,64 @@ class RoleManager(QWidget):
     def load_sample_data(self):
         """加载示例数据"""
         # 添加分类
-        categories = ["主要角色", "次要角色", "配角", "反派", "路人"]
+        categories = ["全部", "主要角色", "次要角色", "配角", "反派", "路人"]
         for category in categories:
             item = QTreeWidgetItem(self.category_tree, [category])
             item.setIcon(0, QIcon())  # 这里可以添加图标
 
         # 添加示例角色
-        self.add_role_to_grid("主角张三", "主要角色")
-        self.add_role_to_grid("导师李四", "主要角色")
-        self.add_role_to_grid("反派王五", "反派")
-        self.add_role_to_grid("朋友赵六", "配角")
+        sample_roles = [
+            {
+                "name": "主角张三",
+                "category": "主要角色",
+                "type": "主角",
+                "gender": "男",
+                "age": 25,
+                "description": "年轻的修仙者，性格坚毅不拔"
+            },
+            {
+                "name": "导师李四",
+                "category": "主要角色",
+                "type": "导师",
+                "gender": "男",
+                "age": 60,
+                "description": "资深修仙导师，智慧深邃"
+            },
+            {
+                "name": "反派王五",
+                "category": "反派",
+                "type": "反派",
+                "gender": "男",
+                "age": 40,
+                "description": "邪恶的反派，企图称霸修仙界"
+            },
+            {
+                "name": "朋友赵六",
+                "category": "配角",
+                "type": "朋友",
+                "gender": "女",
+                "age": 23,
+                "description": "主角的忠实朋友，聪明机智"
+            }
+        ]
+
+        # 添加角色到存储和UI
+        for role in sample_roles:
+            self.add_role(role["name"], role["category"], role)
 
         # 更新统计
         self.update_statistics()
+
+    def add_role(self, name: str, category: str, role_data: Dict[str, Any] = None):
+        """添加角色到存储和UI"""
+        if role_data is None:
+            role_data = {"name": name, "category": category}
+
+        # 存储到角色列表
+        self.all_roles[name] = role_data
+
+        # 添加到UI
+        self.add_role_to_grid(name, category)
 
     def add_role_to_grid(self, name: str, category: str):
         """添加角色到网格视图"""
@@ -666,20 +735,85 @@ class RoleManager(QWidget):
         self.role_selected.emit(role_name)
 
     def filter_roles(self, text: str):
-        """过滤角色"""
-        # 这里实现搜索过滤逻辑
-        pass
+        """过滤角色
+
+        Args:
+            text: 搜索文本，支持角色名、描述、属性等多字段搜索
+        """
+        self.current_filter = text.strip().lower()
+
+        # 清除当前网格中的所有角色
+        self.clear_role_grid()
+
+        # 根据过滤条件显示角色
+        filtered_count = 0
+        for role_name, role_data in self.all_roles.items():
+            if self._role_matches_filter(role_data):
+                category = role_data.get("category", "未分类")
+                self.add_role_to_grid(role_name, category)
+                filtered_count += 1
+
+        # 更新统计信息
+        self.update_statistics(filtered_count)
+
+    def _role_matches_filter(self, role_data: Dict[str, Any]) -> bool:
+        """检查角色是否匹配当前过滤条件"""
+        # 如果没有过滤文本，默认显示
+        if not self.current_filter:
+            return self._role_matches_category(role_data)
+
+        # 搜索文本
+        search_text = self.current_filter
+
+        # 搜索范围：角色名、描述、类型、性别等
+        searchable_fields = [
+            role_data.get("name", ""),
+            role_data.get("description", ""),
+            role_data.get("type", ""),
+            role_data.get("gender", ""),
+            role_data.get("category", ""),
+            role_data.get("personality_description", ""),
+            role_data.get("background_story", ""),
+            role_data.get("appearance", "")
+        ]
+
+        # 检查是否匹配搜索文本
+        for field in searchable_fields:
+            if search_text in field.lower():
+                return self._role_matches_category(role_data)
+
+        return False
+
+    def _role_matches_category(self, role_data: Dict[str, Any]) -> bool:
+        """检查角色是否匹配当前分类过滤"""
+        if self.current_category == "全部":
+            return True
+
+        role_category = role_data.get("category", "未分类")
+        return role_category == self.current_category
 
     def search_roles(self):
-        """搜索角色"""
+        """搜索角色（响应搜索按钮点击或回车键）"""
         search_text = self.role_search.text()
-        # 这里实现搜索逻辑
-        pass
+        self.filter_roles(search_text)
 
     def filter_by_category(self, category: str):
-        """按分类过滤"""
-        # 这里实现分类过滤逻辑
-        pass
+        """按分类过滤
+
+        Args:
+            category: 分类名称，传入"全部"显示所有角色
+        """
+        self.current_category = category
+
+        # 重新应用过滤
+        self.filter_roles(self.current_filter)
+
+    def clear_role_grid(self):
+        """清除角色网格中的所有角色卡片"""
+        while self.role_grid_layout.count():
+            child = self.role_grid_layout.takeAt(0)
+            if child.widget():
+                child.widget().deleteLater()
 
     def switch_view(self, view_type: str):
         """切换视图"""
@@ -723,11 +857,9 @@ class RoleManager(QWidget):
         }
 
     def create_new_role(self):
-        """创建新角色"""
-        # 清空编辑器
-        self.clear_editor()
-        self.current_role = ""
-        self.role_name.setFocus()
+        """创建新角色 - 修复版本，避免在异步上下文中调用setFocus"""
+        # 使用安全清空方式
+        self._safe_clear_editor()
 
     def save_current_role(self):
         """保存当前角色 - 预防性编程"""
@@ -806,22 +938,187 @@ class RoleManager(QWidget):
             show_error_dialog(self, "错误", "请先选择要复制的角色")
             return
 
-        # 这里实现复制逻辑
-        show_info_dialog(self, "提示", "角色复制功能待实现")
+        try:
+            # 获取当前角色数据
+            if self.current_role not in self.all_roles:
+                show_error_dialog(self, "错误", "未找到当前角色数据")
+                return
+
+            original_role = self.all_roles[self.current_role].copy()
+
+            # 生成新的角色名
+            new_name = f"{self.current_role}(副本)"
+            counter = 1
+            while new_name in self.all_roles:
+                new_name = f"{self.current_role}(副本{counter})"
+                counter += 1
+
+            # 更新新角色数据
+            original_role["name"] = new_name
+            original_role["category"] = original_role.get("category", "未分类")
+
+            # 添加到角色列表
+            self.add_role(new_name, original_role["category"], original_role)
+
+            # 保存到项目
+            if hasattr(self, 'save_roles'):
+                self.save_roles()
+
+            show_info_dialog(self, "成功", f"角色 '{self.current_role}' 已复制为 '{new_name}'")
+
+        except Exception as e:
+            show_error_dialog(self, "错误", f"复制角色失败:\n{str(e)}")
 
     def export_role(self):
         """导出角色"""
-        if not self.current_role:
-            show_error_dialog(self, "错误", "请先选择要导出的角色")
-            return
+        from PySide6.QtWidgets import QFileDialog, QMessageBox
+        import json
+        import os
 
-        # 这里实现导出逻辑
-        show_info_dialog(self, "提示", "角色导出功能待实现")
+        try:
+            # 打开文件选择对话框
+            file_path, _ = QFileDialog.getSaveFileName(
+                self,
+                "导出角色",
+                f"role_{self.current_role if self.current_role else 'all'}.json",
+                "JSON文件 (*.json);;所有文件 (*)"
+            )
+
+            if not file_path:
+                return
+
+            # 确保目录存在
+            os.makedirs(os.path.dirname(file_path), exist_ok=True)
+
+            # 准备导出数据
+            export_data = {}
+
+            if self.current_role:
+                # 导出当前选中的角色
+                if self.current_role in self.all_roles:
+                    export_data[self.current_role] = self.all_roles[self.current_role]
+                else:
+                    show_error_dialog(self, "错误", "未找到当前角色数据")
+                    return
+            else:
+                # 导出所有角色
+                export_data = self.all_roles
+
+            # 添加导出元信息
+            export_metadata = {
+                "export_time": str(os.path.getmtime(file_path) if os.path.exists(file_path) else ""),
+                "role_count": len(export_data),
+                "version": "1.0"
+            }
+
+            # 创建最终导出数据
+            final_data = {
+                "metadata": export_metadata,
+                "roles": export_data
+            }
+
+            # 写入文件
+            with open(file_path, 'w', encoding='utf-8') as f:
+                json.dump(final_data, f, ensure_ascii=False, indent=2)
+
+            file_name = os.path.basename(file_path)
+            show_info_dialog(
+                self,
+                "成功",
+                f"角色导出成功！\n\n"
+                f"文件: {file_name}\n"
+                f"角色数量: {len(export_data)}\n"
+                f"保存位置: {file_path}"
+            )
+
+        except Exception as e:
+            show_error_dialog(self, "错误", f"导出角色失败:\n{str(e)}")
 
     def import_role(self):
         """导入角色"""
-        # 这里实现导入逻辑
-        show_info_dialog(self, "提示", "角色导入功能待实现")
+        from PySide6.QtWidgets import QFileDialog, QMessageBox
+        import json
+        import os
+
+        try:
+            # 打开文件选择对话框
+            file_path, _ = QFileDialog.getOpenFileName(
+                self,
+                "导入角色",
+                "",
+                "JSON文件 (*.json);;所有文件 (*)"
+            )
+
+            if not file_path:
+                return
+
+            # 检查文件是否存在
+            if not os.path.exists(file_path):
+                show_error_dialog(self, "错误", "选择的文件不存在")
+                return
+
+            # 读取并解析JSON文件
+            with open(file_path, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+
+            # 处理不同的数据格式
+            roles_to_import = {}
+
+            if "metadata" in data and "roles" in data:
+                # 格式1: 包含元信息
+                roles_to_import = data["roles"]
+            elif isinstance(data, dict) and any(k for k in data.keys() if k != "metadata"):
+                # 格式2: 直接是角色字典
+                roles_to_import = data
+            else:
+                show_error_dialog(self, "错误", "无效的角色数据格式")
+                return
+
+            if not roles_to_import:
+                show_error_dialog(self, "错误", "文件中没有找到角色数据")
+                return
+
+            # 处理重复的角色名
+            imported_count = 0
+            skipped_count = 0
+            for role_name, role_data in roles_to_import.items():
+                # 检查角色名是否已存在
+                if role_name in self.all_roles:
+                    # 生成新名称
+                    new_name = f"{role_name}(导入)"
+                    counter = 1
+                    while new_name in self.all_roles:
+                        new_name = f"{role_name}(导入{counter})"
+                        counter += 1
+
+                    # 更新角色名
+                    role_data["name"] = new_name
+                    self.add_role(new_name, role_data.get("category", "未分类"), role_data)
+                    imported_count += 1
+                else:
+                    # 直接添加
+                    self.add_role(role_name, role_data.get("category", "未分类"), role_data)
+                    imported_count += 1
+
+            # 保存到项目
+            if hasattr(self, 'save_roles'):
+                self.save_roles()
+
+            file_name = os.path.basename(file_path)
+            show_info_dialog(
+                self,
+                "成功",
+                f"角色导入完成！\n\n"
+                f"文件: {file_name}\n"
+                f"成功导入: {imported_count} 个角色\n"
+                f"跳过: {skipped_count} 个角色\n"
+                f"总角色数: {len(self.all_roles)}"
+            )
+
+        except json.JSONDecodeError as e:
+            show_error_dialog(self, "错误", f"JSON格式错误:\n{str(e)}")
+        except Exception as e:
+            show_error_dialog(self, "错误", f"导入角色失败:\n{str(e)}")
 
     def generate_ai_role(self):
         """AI生成角色"""
@@ -830,28 +1127,163 @@ class RoleManager(QWidget):
 
     def add_category(self):
         """添加分类"""
-        # 这里实现添加分类逻辑
-        show_info_dialog(self, "提示", "添加分类功能待实现")
+        from PySide6.QtWidgets import QInputDialog
+
+        # 弹出输入对话框
+        category_name, ok = QInputDialog.getText(
+            self, "添加分类", "请输入新分类名称:", text=""
+        )
+
+        if ok and category_name.strip():
+            category_name = category_name.strip()
+
+            # 检查分类是否已存在
+            existing_items = []
+            for i in range(self.category_tree.topLevelItemCount()):
+                item = self.category_tree.topLevelItem(i)
+                existing_items.append(item.text(0))
+
+            if category_name in existing_items:
+                show_error_dialog(self, "错误", f"分类 '{category_name}' 已存在！")
+                return
+
+            # 添加新分类
+            new_item = QTreeWidgetItem(self.category_tree, [category_name])
+            self.category_tree.addTopLevelItem(new_item)
+            self.category_tree.setCurrentItem(new_item)
+
+            show_info_dialog(self, "成功", f"分类 '{category_name}' 添加成功！")
+
+        elif ok and not category_name.strip():
+            show_error_dialog(self, "错误", "分类名称不能为空！")
 
     def edit_category(self):
         """编辑分类"""
-        # 这里实现编辑分类逻辑
-        show_info_dialog(self, "提示", "编辑分类功能待实现")
+        from PySide6.QtWidgets import QInputDialog
+
+        # 获取当前选中的分类
+        current_item = self.category_tree.currentItem()
+
+        if not current_item:
+            show_error_dialog(self, "错误", "请先选择要编辑的分类！")
+            return
+
+        # 获取当前分类名称
+        old_name = current_item.text(0)
+
+        # 弹出输入对话框，预填当前名称
+        new_name, ok = QInputDialog.getText(
+            self, "编辑分类", "请输入新分类名称:", text=old_name
+        )
+
+        if ok and new_name.strip():
+            new_name = new_name.strip()
+
+            # 检查新名称是否与其他分类重名
+            for i in range(self.category_tree.topLevelItemCount()):
+                item = self.category_tree.topLevelItem(i)
+                if item != current_item and item.text(0) == new_name:
+                    show_error_dialog(self, "错误", f"分类 '{new_name}' 已存在！")
+                    return
+
+            # 更新分类名称
+            current_item.setText(0, new_name)
+            show_info_dialog(self, "成功", f"分类 '{old_name}' 已更名为 '{new_name}'")
+
+        elif ok and not new_name.strip():
+            show_error_dialog(self, "错误", "分类名称不能为空！")
 
     def delete_category(self):
         """删除分类"""
-        # 这里实现删除分类逻辑
-        show_info_dialog(self, "提示", "删除分类功能待实现")
+        from PySide6.QtWidgets import QMessageBox
+
+        # 获取当前选中的分类
+        current_item = self.category_tree.currentItem()
+
+        if not current_item:
+            show_error_dialog(self, "错误", "请先选择要删除的分类！")
+            return
+
+        category_name = current_item.text(0)
+
+        # 确认删除
+        reply = QMessageBox.question(
+            self, "确认删除",
+            f"确定要删除分类 '{category_name}' 吗？\n此操作不可撤销！",
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.No
+        )
+
+        if reply == QMessageBox.Yes:
+            # 删除分类
+            index = self.category_tree.indexOfTopLevelItem(current_item)
+            self.category_tree.takeTopLevelItem(index)
+
+            show_info_dialog(self, "成功", f"分类 '{category_name}' 已删除")
+
+            # 如果删除后还有分类，选中第一个
+            if self.category_tree.topLevelItemCount() > 0:
+                first_item = self.category_tree.topLevelItem(0)
+                self.category_tree.setCurrentItem(first_item)
+                self.on_category_selected(first_item, 0)
 
     def add_ability(self):
         """添加技能"""
-        # 这里实现添加技能逻辑
-        show_info_dialog(self, "提示", "添加技能功能待实现")
+        from PySide6.QtWidgets import QInputDialog, QMessageBox
+
+        # 弹出输入对话框
+        ability_name, ok = QInputDialog.getText(
+            self, "添加技能", "请输入技能名称:", text=""
+        )
+
+        if ok and ability_name.strip():
+            ability_name = ability_name.strip()
+
+            # 检查技能是否已存在
+            existing_items = []
+            for i in range(self.abilities_list.count()):
+                existing_items.append(self.abilities_list.item(i).text())
+
+            if ability_name in existing_items:
+                show_error_dialog(self, "错误", f"技能 '{ability_name}' 已存在！")
+                return
+
+            # 添加技能到列表
+            self.abilities_list.addItem(ability_name)
+            self.abilities_list.setCurrentRow(self.abilities_list.count() - 1)
+
+            show_info_dialog(self, "成功", f"技能 '{ability_name}' 添加成功！")
+
+        elif ok and not ability_name.strip():
+            show_error_dialog(self, "错误", "技能名称不能为空！")
 
     def remove_ability(self):
         """移除技能"""
-        # 这里实现移除技能逻辑
-        show_info_dialog(self, "提示", "移除技能功能待实现")
+        from PySide6.QtWidgets import QMessageBox
+
+        # 获取当前选中的技能
+        current_item = self.abilities_list.currentItem()
+
+        if not current_item:
+            show_error_dialog(self, "错误", "请先选择要删除的技能！")
+            return
+
+        ability_name = current_item.text()
+
+        # 确认删除
+        reply = QMessageBox.question(
+            self, "确认删除",
+            f"确定要删除技能 '{ability_name}' 吗？",
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.No
+        )
+
+        if reply == QMessageBox.Yes:
+            # 删除技能
+            row = self.abilities_list.row(current_item)
+            self.abilities_list.takeItem(row)
+
+            show_info_dialog(self, "成功", f"技能 '{ability_name}' 已删除")
 
     def add_relationship(self):
         """添加关系"""
@@ -870,15 +1302,128 @@ class RoleManager(QWidget):
 
     def select_avatar(self):
         """选择头像"""
-        # 这里实现选择头像逻辑
-        show_info_dialog(self, "提示", "头像选择功能待实现")
+        from PySide6.QtWidgets import QFileDialog, QDialog, QVBoxLayout, QHBoxLayout, QLabel, QPushButton
+        from PySide6.QtGui import QPixmap, QIcon
+        from PySide6.QtCore import Qt
+        import os
+        import shutil
 
-    def update_statistics(self):
-        """更新统计信息"""
-        # 这里实现统计更新逻辑
-        total_roles = 4  # 示例数据
-        main_roles = 2   # 示例数据
-        minor_roles = 2   # 示例数据
+        # 打开文件选择对话框
+        file_path, _ = QFileDialog.getOpenFileName(
+            self,
+            "选择角色头像",
+            "",
+            "图片文件 (*.png *.jpg *.jpeg *.bmp *.gif *.ico);;所有文件 (*)"
+        )
+
+        if not file_path:
+            return  # 用户取消选择
+
+        # 检查文件是否存在
+        if not os.path.exists(file_path):
+            show_error_dialog(self, "错误", "选择的文件不存在")
+            return
+
+        # 验证图片文件
+        try:
+            # 尝试加载图片以验证格式
+            pixmap = QPixmap(file_path)
+            if pixmap.isNull():
+                show_error_dialog(self, "错误", "无法加载图片文件，请检查文件格式")
+                return
+        except Exception as e:
+            show_error_dialog(self, "错误", f"图片验证失败: {str(e)}")
+            return
+
+        # 如果有当前角色，将头像保存到角色数据
+        if self.current_role and self.current_role in self.all_roles:
+            # 创建头像存储目录
+            avatars_dir = os.path.join(os.path.dirname(self.current_project_path) if self.current_project_path else "/tmp", "avatars")
+            if not os.path.exists(avatars_dir):
+                os.makedirs(avatars_dir, exist_ok=True)
+
+            # 复制头像到项目目录
+            avatar_filename = f"{self.current_role}.png"
+            avatar_path = os.path.join(avatars_dir, avatar_filename)
+
+            try:
+                # 调整头像大小（如果需要）
+                scaled_pixmap = pixmap.scaled(128, 128, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+                scaled_pixmap.save(avatar_path, "PNG")
+
+                # 更新角色数据
+                self.all_roles[self.current_role]["avatar_path"] = avatar_path
+
+                show_info_dialog(self, "成功", f"角色头像已设置！\n保存位置: {avatar_path}")
+
+            except Exception as e:
+                show_error_dialog(self, "错误", f"保存头像失败: {str(e)}")
+        else:
+            # 没有当前角色，显示头像预览
+            self.show_avatar_preview(file_path)
+
+    def show_avatar_preview(self, file_path: str):
+        """显示头像预览对话框"""
+        from PySide6.QtWidgets import QDialog, QVBoxLayout, QHBoxLayout, QLabel, QPushButton
+        from PySide6.QtGui import QPixmap
+        from PySide6.QtCore import Qt
+
+        dialog = QDialog(self)
+        dialog.setWindowTitle("头像预览")
+        dialog.setModal(True)
+        dialog.resize(300, 350)
+
+        layout = QVBoxLayout(dialog)
+
+        # 显示图片
+        pixmap = QPixmap(file_path)
+        if not pixmap.isNull():
+            # 缩放图片
+            scaled_pixmap = pixmap.scaled(200, 200, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+            avatar_label = QLabel()
+            avatar_label.setPixmap(scaled_pixmap)
+            avatar_label.setAlignment(Qt.AlignCenter)
+            layout.addWidget(avatar_label)
+
+        # 文件信息
+        import os
+        file_info = QLabel(f"文件名: {os.path.basename(file_path)}")
+        file_info.setAlignment(Qt.AlignCenter)
+        layout.addWidget(file_info)
+
+        file_size = os.path.getsize(file_path) / 1024  # KB
+        size_label = QLabel(f"大小: {file_size:.1f} KB")
+        size_label.setAlignment(Qt.AlignCenter)
+        layout.addWidget(size_label)
+
+        # 按钮
+        btn_layout = QHBoxLayout()
+        close_btn = QPushButton("关闭")
+        close_btn.clicked.connect(dialog.accept)
+        btn_layout.addWidget(close_btn)
+        layout.addLayout(btn_layout)
+
+        dialog.exec()
+
+    def update_statistics(self, filtered_count: int = None):
+        """更新统计信息
+
+        Args:
+            filtered_count: 当前过滤后显示的角色数量，如果为None则统计所有角色
+        """
+        if filtered_count is not None:
+            # 使用过滤后的数量
+            total_roles = filtered_count
+        else:
+            # 统计所有角色
+            total_roles = len(self.all_roles)
+
+        # 统计主要角色
+        main_roles = sum(1 for role in self.all_roles.values()
+                        if role.get("category") == "主要角色")
+
+        # 统计次要角色
+        minor_roles = total_roles - main_roles
 
         self.total_roles_label.setText(str(total_roles))
         self.main_roles_label.setText(str(main_roles))
@@ -887,7 +1432,40 @@ class RoleManager(QWidget):
     def load_project(self, project_path: str):
         """加载项目"""
         self.current_project_path = project_path
-        # 这里实现项目加载逻辑
+
+        # 初始化数据管理器
+        if not self.data_manager:
+            self.data_manager = DataManager(project_path)
+
+        # 尝试加载已保存的角色数据
+        try:
+            if hasattr(self.data_manager, 'load_roles'):
+                roles_data = self.data_manager.load_roles()
+                if roles_data:
+                    # 清除现有角色
+                    self.clear_all_roles()
+
+                    # 加载保存的角色
+                    for role_name, role_data in roles_data.items():
+                        self.add_role(role_name, role_data.get("category", "未分类"), role_data)
+
+                    self.update_statistics()
+        except Exception as e:
+            # 如果没有保存的角色数据或加载失败，使用示例数据
+            print(f"加载角色数据失败: {e}")
+
+    def clear_all_roles(self):
+        """清除所有角色"""
+        self.all_roles.clear()
+        self.clear_role_grid()
+
+    def save_roles(self):
+        """保存角色数据到项目"""
+        if self.data_manager and hasattr(self.data_manager, 'save_roles'):
+            try:
+                self.data_manager.save_roles(self.all_roles)
+            except Exception as e:
+                show_error_dialog(self, "错误", f"保存角色失败:\n{str(e)}")
     # ========== 角色模板系统 ==========
 
     def use_role_template(self):
@@ -1043,38 +1621,408 @@ class RoleManager(QWidget):
 
     def generate_ai_role(self):
         """AI辅助角色创建"""
-        from PySide6.QtWidgets import QDialog, QVBoxLayout, QHBoxLayout, QFormLayout, QPushButton, QTextEdit, QLineEdit, QSpinBox
-        
+        from PySide6.QtWidgets import QDialog, QVBoxLayout, QHBoxLayout, QFormLayout, QPushButton, QTextEdit, QLineEdit, QGroupBox
+        from PySide6.QtCore import Qt
+
         dialog = QDialog(self)
         dialog.setWindowTitle("🤖 AI角色生成器")
         dialog.setModal(True)
         dialog.resize(600, 500)
-        
+
         layout = QVBoxLayout(dialog)
-        
+
         # 描述输入
-        desc_group = QFormLayout()
-        desc_group.addRow("角色描述:", QLineEdit("请输入你想要创建的角色描述，如：年轻的魔法师，性格内向但天赋异禀..."))
-        desc_group.addRow("补充说明:", QTextEdit("可以补充更多细节，如背景、目标等..."))
-        layout.addLayout(desc_group)
-        
+        input_group = QGroupBox("角色信息输入")
+        input_layout = QFormLayout(input_group)
+
+        self.role_desc_input = QLineEdit()
+        self.role_desc_input.setPlaceholderText("请输入你想要创建的角色描述，如：年轻的魔法师，性格内向但天赋异禀...")
+        input_layout.addRow("角色描述:", self.role_desc_input)
+
+        self.additional_notes_input = QTextEdit()
+        self.additional_notes_input.setPlaceholderText("可以补充更多细节，如背景、目标等...")
+        self.additional_notes_input.setMaximumHeight(100)
+        input_layout.addRow("补充说明:", self.additional_notes_input)
+
+        layout.addWidget(input_group)
+
+        # 提示信息
+        from PySide6.QtWidgets import QLabel
+        tip_label = QLabel("💡 提示：角色描述越详细，生成的角色越精准。建议包含角色的职业、性格、目标等信息。")
+        tip_label.setStyleSheet("color: #666; font-style: italic; padding: 10px;")
+        layout.addWidget(tip_label)
+
         # 按钮
         btn_layout = QHBoxLayout()
         cancel_btn = QPushButton("取消")
         cancel_btn.clicked.connect(dialog.reject)
         btn_layout.addWidget(cancel_btn)
-        
+
         generate_btn = QPushButton("生成角色")
-        generate_btn.setStyleSheet("background-color: #2196f3; color: white;")
-        generate_btn.clicked.connect(lambda: self._perform_ai_generation(dialog))
+        generate_btn.setStyleSheet("background-color: #2196f3; color: white; font-weight: bold;")
+        generate_btn.clicked.connect(lambda: self._perform_ai_generation_with_inputs(dialog))
         btn_layout.addWidget(generate_btn)
-        
+
         layout.addLayout(btn_layout)
-        
+
         dialog.exec()
 
-    def _perform_ai_generation(self, dialog: QDialog):
-        """执行AI生成"""
-        # 这里实现AI生成逻辑
-        show_info_dialog(self, "提示", "AI生成功能需要配置LLM，暂未完全实现")
-        dialog.accept()
+    def _perform_ai_generation_with_inputs(self, dialog: QDialog):
+        """执行AI生成 - 带有输入参数"""
+        import logging
+        logger = logging.getLogger(__name__)
+
+        try:
+            # 获取用户输入
+            role_description = self.role_desc_input.text().strip()
+            additional_notes = self.additional_notes_input.toPlainText().strip()
+
+            # 如果没有输入，使用默认值
+            if not role_description:
+                role_description = "一个充满神秘感的角色"
+
+            if not additional_notes:
+                additional_notes = "无特殊要求"
+
+            logger.info(f"开始AI角色生成，描述: {role_description[:50]}...")
+
+            # 获取当前LLM配置
+            if "choose_configs" in self.config and "architecture_llm" in self.config["choose_configs"]:
+                selected_llm_name = self.config["choose_configs"]["architecture_llm"]
+            elif "last_interface_format" in self.config:
+                # 如果没有选择配置，使用默认配置
+                if "llm_configs" in self.config and self.config["llm_configs"]:
+                    # 尝试找到匹配last_interface_format的配置
+                    found = False
+                    for name, config in self.config["llm_configs"].items():
+                        if config.get("interface_format", "").lower() == self.config["last_interface_format"].lower():
+                            selected_llm_name = name
+                            found = True
+                            break
+                    if not found:
+                        selected_llm_name = list(self.config["llm_configs"].keys())[0]
+                else:
+                    show_error_dialog(self, "错误", "未找到可用的LLM配置，请先在配置管理中设置LLM")
+                    dialog.accept()
+                    return
+            else:
+                # 使用第一个可用的配置
+                if "llm_configs" in self.config and self.config["llm_configs"]:
+                    selected_llm_name = list(self.config["llm_configs"].keys())[0]
+                else:
+                    show_error_dialog(self, "错误", "未找到可用的LLM配置，请先在配置管理中设置LLM")
+                    dialog.accept()
+                    return
+
+            # 获取LLM配置详情
+            if "llm_configs" not in self.config or selected_llm_name not in self.config["llm_configs"]:
+                show_error_dialog(self, "错误", f"LLM配置 '{selected_llm_name}' 不存在，请检查配置")
+                dialog.accept()
+                return
+
+            llm_config = self.config["llm_configs"][selected_llm_name]
+
+            # 验证配置
+            if not llm_config.get("api_key"):
+                show_error_dialog(self, "错误", f"LLM配置 '{selected_llm_name}' 缺少API密钥")
+                dialog.accept()
+                return
+
+            logger.info(f"使用LLM配置: {selected_llm_name}, 接口: {llm_config.get('interface_format')}")
+
+            # 创建LLM适配器
+            from llm_adapters import create_llm_adapter
+            from prompt_definitions import ai_role_generation_prompt
+
+            # 构建提示词
+            prompt = ai_role_generation_prompt.format(
+                role_description=role_description,
+                additional_notes=additional_notes
+            )
+
+            logger.debug(f"提示词长度: {len(prompt)} 字符")
+
+            # 创建适配器
+            llm_adapter = create_llm_adapter(
+                interface_format=llm_config.get("interface_format", "OpenAI"),
+                base_url=llm_config.get("base_url", ""),
+                model_name=llm_config.get("model_name", ""),
+                api_key=llm_config.get("api_key", ""),
+                temperature=llm_config.get("temperature", 0.7),
+                max_tokens=llm_config.get("max_tokens", 8192),
+                timeout=llm_config.get("timeout", 600)
+            )
+
+            # 调用LLM生成角色
+            from PySide6.QtWidgets import QProgressDialog
+            from PySide6.QtCore import QTimer
+            import json
+            import re
+            import threading
+
+            # 显示进度对话框
+            progress = QProgressDialog("正在生成角色...", "取消", 0, 0, dialog)
+            progress.setWindowTitle("AI生成中")
+            progress.setWindowModality(Qt.WindowModal)
+            progress.show()
+
+            def generate_role():
+                import time
+                import threading
+
+                # 设置超时时间（60秒）
+                timeout = 60
+                start_time = time.time()
+
+                try:
+                    logger.info("开始调用LLM API...")
+                    logger.info(f"设置超时时间: {timeout}秒")
+
+                    # 调用LLM
+                    response = llm_adapter.invoke(prompt)
+
+                    # 检查是否超时
+                    elapsed = time.time() - start_time
+                    logger.info(f"API调用耗时: {elapsed:.2f}秒")
+                    logger.info(f"LLM响应长度: {len(response) if response else 0} 字符")
+
+                    # 记录前200个字符作为调试信息
+                    if response:
+                        logger.debug(f"LLM响应前200字符: {response[:200]}")
+                    else:
+                        logger.warning("LLM返回空响应")
+
+                    if elapsed > timeout:
+                        progress.close()
+                        dialog.accept()
+                        error_msg = f"API调用超时（>{timeout}秒），请检查网络连接或增加超时时间"
+                        logger.error(error_msg)
+                        show_error_dialog(self, "生成失败", error_msg)
+                        return
+
+                    if not response:
+                        progress.close()
+                        dialog.accept()
+                        error_msg = "未获取到LLM响应，请检查网络连接和API配置"
+                        logger.error(error_msg)
+                        show_error_dialog(self, "生成失败", error_msg)
+                        return
+
+                    # 解析JSON响应
+                    # 尝试提取JSON部分
+                    json_match = re.search(r'\{.*\}', response, re.DOTALL)
+                    if json_match:
+                        json_str = json_match.group()
+                        logger.info(f"找到JSON片段，长度: {len(json_str)}")
+                        try:
+                            role_data = json.loads(json_str)
+                            logger.info(f"成功解析JSON，角色名: {role_data.get('name', '未知')}")
+                            logger.info("存储角色数据并通知主线程...")
+
+                            # 使用线程安全的方式存储数据
+                            with self.pending_role_data_lock:
+                                self.pending_role_data = {
+                                    'role_data': role_data,
+                                    'progress': progress,
+                                    'dialog': dialog
+                                }
+
+                            # ✅ 角色数据已安全存储，主线程定时器将自动轮询
+                            logger.info("✅ 角色数据已安全存储到pending_role_data")
+                            logger.info("✅ 主线程的轮询定时器将自动检测并处理")
+
+                        except json.JSONDecodeError as e:
+                            progress.close()
+                            dialog.accept()
+                            error_msg = f"LLM返回的数据格式不正确，无法解析: {str(e)}"
+                            logger.error(f"{error_msg}\n原始响应: {response[:500]}")
+                            show_error_dialog(self, "解析错误", error_msg)
+                    else:
+                        progress.close()
+                        dialog.accept()
+                        error_msg = "未找到有效的JSON数据"
+                        logger.error(f"{error_msg}\n原始响应: {response[:500]}")
+                        show_error_dialog(self, "解析错误", error_msg)
+
+                except Exception as e:
+                    progress.close()
+                    dialog.accept()
+                    error_msg = f"生成角色时出错: {str(e)}"
+                    logger.error(f"{error_msg}\n异常类型: {type(e).__name__}")
+                    import traceback
+                    logger.error(traceback.format_exc())
+                    show_error_dialog(self, "错误", error_msg)
+
+            # 在新线程中执行生成
+            thread = threading.Thread(target=generate_role, daemon=True)
+            thread.start()
+
+        except Exception as e:
+            dialog.accept()
+            error_msg = f"AI生成功能出错: {str(e)}"
+            logger.error(f"{error_msg}\n异常类型: {type(e).__name__}")
+            import traceback
+            logger.error(traceback.format_exc())
+            show_error_dialog(self, "错误", error_msg)
+
+    def _check_pending_role_data(self):
+        """检查并处理待处理的角色数据（主线程中执行）"""
+        import logging
+        import traceback
+
+        logger = logging.getLogger(__name__)
+        logger.info("[定时器] 检查待处理的角色数据...")
+
+        # 获取待处理数据
+        with self.pending_role_data_lock:
+            if not self.pending_role_data:
+                return  # 没有数据就继续轮询，不输出日志避免刷屏
+
+            data = self.pending_role_data.copy()
+            self.pending_role_data = None
+
+        try:
+            role_data = data['role_data']
+            progress = data['progress']
+            dialog = data['dialog']
+
+            logger.info(f"[定时器] 开始应用生成的角色数据到UI...")
+            logger.info(f"[定时器] 角色名: {role_data.get('name', '未知')}")
+
+            # 关闭进度对话框
+            logger.info("[定时器] 关闭进度对话框...")
+            try:
+                progress.close()
+            except Exception as e:
+                logger.warning(f"关闭进度对话框失败: {e}")
+
+            # 清空当前角色
+            logger.info("[定时器] 清空当前角色编辑器...")
+            self._safe_clear_editor()
+
+            # 设置基本信息
+            logger.info("[定时器] 设置角色基本信息...")
+            try:
+                if "name" in role_data:
+                    logger.info(f"  - 角色名: {role_data['name']}")
+                    self.role_name.setText(role_data["name"])
+                if "type" in role_data:
+                    logger.info(f"  - 角色类型: {role_data['type']}")
+                    self.role_type.setCurrentText(role_data["type"])
+                if "gender" in role_data:
+                    logger.info(f"  - 性别: {role_data['gender']}")
+                    self.role_gender.setCurrentText(role_data["gender"])
+                if "age" in role_data:
+                    logger.info(f"  - 年龄: {role_data['age']}")
+                    self.role_age.setValue(int(role_data["age"]))
+            except Exception as e:
+                logger.error(f"[定时器] 设置基本信息时出错: {e}")
+                logger.error(traceback.format_exc())
+
+            # 设置详细描述
+            logger.info("[定时器] 设置详细描述...")
+            try:
+                if "appearance" in role_data:
+                    appearance_preview = role_data["appearance"][:50] + "..." if len(role_data["appearance"]) > 50 else role_data["appearance"]
+                    logger.info(f"  - 外貌: {appearance_preview}")
+                    self.role_appearance.setPlainText(role_data["appearance"])
+                if "personality_description" in role_data:
+                    personality_preview = role_data["personality_description"][:50] + "..." if len(role_data["personality_description"]) > 50 else role_data["personality_description"]
+                    logger.info(f"  - 性格: {personality_preview}")
+                    self.personality_description.setPlainText(role_data["personality_description"])
+                if "background_story" in role_data:
+                    background_preview = role_data["background_story"][:50] + "..." if len(role_data["background_story"]) > 50 else role_data["background_story"]
+                    logger.info(f"  - 背景: {background_preview}")
+                    self.background_story.setPlainText(role_data["background_story"])
+            except Exception as e:
+                logger.error(f"[定时器] 设置详细描述时出错: {e}")
+                logger.error(traceback.format_exc())
+
+            # 设置性格特质
+            logger.info("[定时器] 设置性格特质...")
+            try:
+                if "personalities" in role_data:
+                    personalities = role_data["personalities"]
+                    logger.info(f"  - 性格列表: {personalities}")
+                    for trait, checkbox in self.personality_checkboxes.items():
+                        if trait in personalities:
+                            logger.info(f"    ✓ {trait}")
+                            checkbox.setChecked(True)
+            except Exception as e:
+                logger.error(f"[定时器] 设置性格特质时出错: {e}")
+                logger.error(traceback.format_exc())
+
+            # 关闭生成对话框
+            logger.info("[定时器] 关闭生成对话框...")
+            try:
+                dialog.accept()
+                logger.info("[定时器] 对话框已关闭")
+            except Exception as e:
+                logger.warning(f"关闭对话框失败: {e}")
+
+            # 显示成功提示
+            logger.info("[定时器] 显示状态栏提示...")
+            try:
+                from PySide6.QtWidgets import QApplication
+
+                app = QApplication.instance()
+                if app and hasattr(app, 'main_window') and hasattr(app.main_window, 'statusBar'):
+                    status_bar = app.main_window.statusBar()
+                    role_name = role_data.get('name', '未知')
+                    status_bar.showMessage(f"✅ 角色 '{role_name}' 生成成功！", 5000)
+                    logger.info(f"[定时器] 状态栏提示已显示: 角色 '{role_name}' 生成成功")
+                else:
+                    logger.warning("[定时器] 无法访问状态栏")
+            except Exception as e:
+                logger.error(f"[定时器] 状态栏提示失败: {e}")
+
+            logger.info("[定时器] 角色应用完成！")
+
+        except Exception as e:
+            logger.error(f"[定时器] 处理待处理数据时出错: {e}")
+            logger.error(traceback.format_exc())
+
+    def _safe_clear_editor(self):
+        """安全清空编辑器（避免在异步操作中调用setFocus）"""
+        try:
+            self.role_name.blockSignals(True)
+            self.role_appearance.blockSignals(True)
+            self.personality_description.blockSignals(True)
+            self.background_story.blockSignals(True)
+
+            self.role_name.clear()
+            self.role_type.setCurrentIndex(0)
+            self.role_gender.setCurrentIndex(0)
+            self.role_age.setValue(20)
+            self.role_appearance.clear()
+            self.personality_description.clear()
+            self.background_story.clear()
+
+            for checkbox in self.personality_checkboxes.values():
+                checkbox.setChecked(False)
+
+        finally:
+            self.role_name.blockSignals(False)
+            self.role_appearance.blockSignals(False)
+            self.personality_description.blockSignals(False)
+            self.background_story.blockSignals(False)
+
+        self.current_role = ""
+
+    def _show_success_and_close(self, role_data: dict, dialog: QDialog):
+        """显示成功提示并关闭对话框"""
+        import logging
+        logger = logging.getLogger(__name__)
+
+        try:
+            dialog.accept()
+            logger.info("生成对话框已关闭")
+
+            # 使用非阻塞的提示
+            show_info_dialog(self, "✅ 成功", f"角色 '{role_data.get('name', '未知')}' 已生成！\n请查看右侧编辑器中的详细信息。")
+            logger.info("角色生成完成！")
+
+        except Exception as e:
+            logger.error(f"显示成功提示时出错: {str(e)}")
+            import traceback
+            logger.error(traceback.format_exc())

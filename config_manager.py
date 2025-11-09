@@ -2,23 +2,91 @@
 # -*- coding: utf-8 -*-
 import json
 import os
+import sys
 import threading
+import platform
+from pathlib import Path
 from llm_adapters import create_llm_adapter
 from embedding_adapters import create_embedding_adapter
 
+# 获取系统配置目录
+def get_config_directory() -> Path:
+    """
+    获取跨平台的用户配置目录
+    - Windows: C:/Users/<用户名>/AppData/Local/InfinitQuill/
+    - macOS: /Users/<用户名>/Library/Preferences/InfinitQuill/
+    - Linux: ~/.config/InfinitQuill/
+    """
+    system = platform.system()
 
-def load_config(config_file: str) -> dict:
-    """从指定的 config_file 加载配置，若不存在则创建一个默认配置文件。"""
+    if system == "Windows":
+        # Windows: 使用 AppData\Local
+        config_dir = Path(os.environ.get('APPDATA', '')) / "InfinitQuill"
+    elif system == "Darwin":
+        # macOS: 使用 Library/Preferences
+        home = Path.home()
+        config_dir = home / "Library" / "Preferences" / "InfinitQuill"
+    else:
+        # Linux/Unix: 使用 XDG 规范或 ~/.config
+        home = Path.home()
+        config_dir = home / ".config" / "InfinitQuill"
 
-    # PenBo 修改代码，增加配置文件不存在则创建一个默认配置文件
-    if not os.path.exists(config_file):
-        create_config(config_file)
+    return config_dir
+
+# 获取项目根目录中的默认配置文件路径
+def get_default_config_path() -> Path:
+    """获取项目根目录中的默认配置文件路径"""
+    # 获取当前文件的父目录（即项目根目录）
+    current_dir = Path(__file__).parent
+    return current_dir / "config.json"
+
+# 获取用户配置文件的实际路径
+def get_user_config_path() -> Path:
+    """获取用户配置文件的实际存储路径"""
+    config_dir = get_config_directory()
+    config_dir.mkdir(parents=True, exist_ok=True)
+    return config_dir / "config.json"
+
+
+def load_config(config_file: str = None) -> dict:
+    """
+    从指定的 config_file 加载配置，若不存在则创建一个默认配置文件。
+    如果未指定config_file，将使用系统用户配置目录。
+    首次使用时，如果用户配置目录中不存在配置文件，将从项目目录的config.json复制过来。
+    """
+
+    # 如果未指定配置文件路径，使用默认的用户配置路径
+    if config_file is None:
+        config_file = get_user_config_path()
+    else:
+        # 如果传入的是相对路径，转换为Path对象处理
+        config_file = Path(config_file)
+
+    # 如果用户配置目录中没有配置文件
+    if not config_file.exists():
+        # 尝试从项目目录复制默认配置
+        default_config_path = get_default_config_path()
+
+        if default_config_path.exists():
+            # 复制默认配置文件到用户配置目录
+            try:
+                import shutil
+                config_file.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(default_config_path, config_file)
+                print(f"✅ 已将默认配置复制到: {config_file}")
+            except Exception as e:
+                print(f"⚠️ 复制默认配置失败: {e}")
+                # 如果复制失败，创建默认配置
+                create_config(str(config_file))
+        else:
+            # 项目目录中也没有配置文件，创建默认配置
+            create_config(str(config_file))
 
     try:
         with open(config_file, 'r', encoding='utf-8') as f:
             return json.load(f)
     except:
-            return {}
+        return {}
 
 
 # PenBo 增加了创建默认配置文件函数
@@ -100,9 +168,22 @@ def create_config(config_file: str) -> dict:
 
 
 
-def save_config(config_data: dict, config_file: str) -> bool:
-    """将 config_data 保存到 config_file 中，返回 True/False 表示是否成功。"""
+def save_config(config_data: dict, config_file: str = None) -> bool:
+    """
+    将 config_data 保存到 config_file 中，返回 True/False 表示是否成功。
+    如果未指定config_file，将使用系统用户配置目录。
+    """
+    # 如果未指定配置文件路径，使用默认的用户配置路径
+    if config_file is None:
+        config_file = get_user_config_path()
+    else:
+        # 如果传入的是相对路径，转换为Path对象处理
+        config_file = Path(config_file)
+
     try:
+        # 确保目录存在
+        config_file.parent.mkdir(parents=True, exist_ok=True)
+
         with open(config_file, 'w', encoding='utf-8') as f:
             json.dump(config_data, f, ensure_ascii=False, indent=4)
         return True

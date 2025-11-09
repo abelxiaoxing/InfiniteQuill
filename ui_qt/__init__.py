@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 PySide6现代化UI模块
-为AI小说生成器提供高性能、美观的图形用户界面
+为InfiniteQuill提供高性能、美观的图形用户界面
 """
 
 from PySide6.QtWidgets import QApplication
@@ -16,10 +16,10 @@ def setup_application():
     app = QApplication(sys.argv)
 
     # 设置应用程序信息
-    app.setApplicationName("AI小说生成器")
-    app.setApplicationDisplayName("AI小说生成器")
+    app.setApplicationName("InfiniteQuill")
+    app.setApplicationDisplayName("InfiniteQuill")
     app.setApplicationVersion("2.0")
-    app.setOrganizationName("NovelGenerator")
+    app.setOrganizationName("InfiniteQuill")
 
     # 设置中文字体和emoji支持
     font = QFont()

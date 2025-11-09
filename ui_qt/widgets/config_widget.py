@@ -22,6 +22,9 @@ from ..utils.ui_helpers import (
 )
 from ..utils.tooltip_manager import tooltip_manager
 
+# 导入配置管理函数
+from config_manager import save_config
+
 
 class ConfigWidget(QWidget):
     """配置管理组件"""
@@ -41,12 +44,6 @@ class ConfigWidget(QWidget):
         layout.setContentsMargins(10, 10, 10, 10)
         layout.setSpacing(15)
 
-        # 创建标题
-        title_label = QLabel(" 配置管理")
-        set_font_size(title_label, 14, bold=True)
-        title_label.setAlignment(Qt.AlignCenter)
-        title_label.setStyleSheet("padding: 10px; background-color: #f8f9fa; border-radius: 6px; margin-bottom: 10px;")
-        layout.addWidget(title_label)
 
         # 创建选项卡
         self.tab_widget = QTabWidget()
@@ -55,6 +52,7 @@ class ConfigWidget(QWidget):
 
         # 创建各个配置选项卡
         self.create_llm_config_tab()
+        self.create_llm_selection_tab()
         self.create_embedding_config_tab()
         self.create_proxy_config_tab()
         self.create_advanced_config_tab()
@@ -173,7 +171,88 @@ class ConfigWidget(QWidget):
         layout.addWidget(test_group)
         layout.addStretch()
 
-        self.tab_widget.addTab(llm_widget, "🤖 LLM配置")
+        self.tab_widget.addTab(llm_widget, "LLM配置")
+
+    def create_llm_selection_tab(self):
+        """创建LLM模型选择选项卡"""
+        selection_widget = QWidget()
+        layout = QVBoxLayout(selection_widget)
+        layout.setSpacing(15)
+
+        # 标题说明
+        title_label = QLabel("为不同生成阶段选择最适合的LLM模型")
+        title_label.setFont(QFont("Microsoft YaHei UI", 12, QFont.Bold))
+        layout.addWidget(title_label)
+
+        # 说明文字
+        desc_label = QLabel("您可以为以下各个生成阶段单独选择不同的LLM模型，以获得最佳的生成效果")
+        desc_label.setWordWrap(True)
+        desc_label.setStyleSheet("color: gray;")
+        layout.addWidget(desc_label)
+
+        layout.addWidget(create_separator())
+
+        # 创建模型选择组
+        selection_group = QGroupBox("生成阶段LLM模型选择")
+        selection_layout = QFormLayout(selection_group)
+
+        # 获取所有可用的LLM配置名称
+        llm_configs = self.config.get("llm_configs", {})
+        available_models = list(llm_configs.keys()) if llm_configs else ["DeepSeek V3", "GPT 5", "Gemini 2.5 Pro"]
+
+        # 提示词草稿生成
+        self.prompt_draft_llm = QComboBox()
+        self.prompt_draft_llm.addItems(available_models)
+        selection_layout.addRow("提示词草稿生成:", self.prompt_draft_llm)
+        tooltip_manager.add_tooltip(self.prompt_draft_llm, "选择用于生成提示词草稿的LLM模型")
+
+        # 架构生成
+        self.architecture_llm = QComboBox()
+        self.architecture_llm.addItems(available_models)
+        selection_layout.addRow("小说架构生成:", self.architecture_llm)
+        tooltip_manager.add_tooltip(self.architecture_llm, "选择用于生成小说世界观、角色设定的LLM模型")
+
+        # 章节大纲生成
+        self.chapter_outline_llm = QComboBox()
+        self.chapter_outline_llm.addItems(available_models)
+        selection_layout.addRow("章节大纲生成:", self.chapter_outline_llm)
+        tooltip_manager.add_tooltip(self.chapter_outline_llm, "选择用于生成章节蓝图的LLM模型")
+
+        # 章节内容生成
+        self.final_chapter_llm = QComboBox()
+        self.final_chapter_llm.addItems(available_models)
+        selection_layout.addRow("章节内容生成:", self.final_chapter_llm)
+        tooltip_manager.add_tooltip(self.final_chapter_llm, "选择用于生成具体章节内容的LLM模型")
+
+        # 一致性检查
+        self.consistency_review_llm = QComboBox()
+        self.consistency_review_llm.addItems(available_models)
+        selection_layout.addRow("一致性检查:", self.consistency_review_llm)
+        tooltip_manager.add_tooltip(self.consistency_review_llm, "选择用于检查内容一致性的LLM模型")
+
+        layout.addWidget(selection_group)
+
+        # 建议说明组
+        suggestion_group = QGroupBox("模型选择建议")
+        suggestion_layout = QVBoxLayout(suggestion_group)
+
+        suggestion_text = QTextEdit()
+        suggestion_text.setReadOnly(True)
+        suggestion_text.setMaximumHeight(120)
+        suggestion_text.setPlainText("""💡 模型选择建议：
+
+• 架构生成：推荐使用Gemini 2.5 Pro（创意性强，适合世界构建）
+• 章节大纲：推荐使用DeepSeek V3（逻辑性强，适合结构规划）
+• 章节内容：推荐使用GPT 5（综合能力强，适合内容创作）
+• 一致性检查：推荐使用DeepSeek V3（逻辑分析能力强）
+• 提示词草稿：推荐使用DeepSeek V3（指令理解能力强）""")
+        suggestion_layout.addWidget(suggestion_text)
+
+        layout.addWidget(suggestion_group)
+
+        layout.addStretch()
+
+        self.tab_widget.addTab(selection_widget, "模型选择")
 
     def create_embedding_config_tab(self):
         """创建嵌入配置选项卡"""
@@ -315,7 +394,7 @@ class ConfigWidget(QWidget):
         layout.addWidget(info_group)
         layout.addStretch()
 
-        self.tab_widget.addTab(proxy_widget, "🌐 代理设置")
+        self.tab_widget.addTab(proxy_widget, "代理设置")
 
     def create_advanced_config_tab(self):
         """创建高级配置选项卡"""
@@ -415,6 +494,9 @@ class ConfigWidget(QWidget):
                 self.config_selector.setCurrentText(current_config)
                 self.load_llm_config_to_ui(current_config)
 
+            # 加载LLM模型选择配置
+            self.load_llm_selection_to_ui(choose_configs)
+
         # 加载嵌入配置
         embedding_configs = self.config.get("embedding_configs", {})
         if embedding_configs:
@@ -472,6 +554,37 @@ class ConfigWidget(QWidget):
             retrieval_k = 4
         self.retrieval_k.setValue(int(retrieval_k))
 
+    def load_llm_selection_to_ui(self, choose_configs: Dict[str, Any]):
+        """加载LLM模型选择到界面"""
+        if not choose_configs:
+            return
+
+        # 设置各个生成阶段选择的LLM
+        if hasattr(self, 'prompt_draft_llm'):
+            prompt_draft = choose_configs.get("prompt_draft_llm", "DeepSeek V3")
+            if self.prompt_draft_llm.findText(prompt_draft) >= 0:
+                self.prompt_draft_llm.setCurrentText(prompt_draft)
+
+        if hasattr(self, 'architecture_llm'):
+            architecture = choose_configs.get("architecture_llm", "Gemini 2.5 Pro")
+            if self.architecture_llm.findText(architecture) >= 0:
+                self.architecture_llm.setCurrentText(architecture)
+
+        if hasattr(self, 'chapter_outline_llm'):
+            chapter_outline = choose_configs.get("chapter_outline_llm", "DeepSeek V3")
+            if self.chapter_outline_llm.findText(chapter_outline) >= 0:
+                self.chapter_outline_llm.setCurrentText(chapter_outline)
+
+        if hasattr(self, 'final_chapter_llm'):
+            final_chapter = choose_configs.get("final_chapter_llm", "GPT 5")
+            if self.final_chapter_llm.findText(final_chapter) >= 0:
+                self.final_chapter_llm.setCurrentText(final_chapter)
+
+        if hasattr(self, 'consistency_review_llm'):
+            consistency = choose_configs.get("consistency_review_llm", "DeepSeek V3")
+            if self.consistency_review_llm.findText(consistency) >= 0:
+                self.consistency_review_llm.setCurrentText(consistency)
+
     def load_proxy_config_to_ui(self, proxy_setting: Dict[str, Any]):
         """加载代理配置到界面"""
         self.enable_proxy.setChecked(proxy_setting.get("enabled", False))
@@ -483,9 +596,18 @@ class ConfigWidget(QWidget):
 
     def load_advanced_config_to_ui(self):
         """加载高级配置到界面"""
-        # 这里可以加载其他高级配置项
+        # 加载日志设置
+        self.log_level.setCurrentText(self.config.get("log_level", "INFO"))
+        self.log_file.setText(self.config.get("log_file", "app.log"))
+
+        # 加载性能设置
+        self.max_workers.setValue(int(self.config.get("max_workers", 4)))
+        self.request_timeout.setValue(int(self.config.get("request_timeout", 30)))
+        self.retry_count.setValue(int(self.config.get("retry_count", 3)))
+
+        # 加载界面设置
         self.auto_save.setChecked(self.config.get("auto_save", True))
-        self.save_interval.setValue(int(self.config.get("save_interval", "5")) if self.config.get("save_interval") else 5)
+        self.save_interval.setValue(int(self.config.get("save_interval", 5)))
         self.show_tooltips.setChecked(self.config.get("show_tooltips", True))
 
     def on_config_selected(self, config_name: str):
@@ -526,6 +648,9 @@ class ConfigWidget(QWidget):
                 self.config_selector.setCurrentText(name)
                 self.load_llm_config_to_ui(name)
 
+                # 更新LLM模型选择选项卡中的模型列表
+                self.update_llm_selection_models()
+
                 show_info_dialog(self, "成功", f"配置 '{name}' 已添加")
             else:
                 show_error_dialog(self, "错误", f"配置 '{name}' 已存在")
@@ -547,7 +672,37 @@ class ConfigWidget(QWidget):
             if "llm_configs" in self.config and current_config in self.config["llm_configs"]:
                 del self.config["llm_configs"][current_config]
                 self.config_selector.removeItem(self.config_selector.findText(current_config))
+
+                # 更新LLM模型选择选项卡中的模型列表
+                self.update_llm_selection_models()
+
                 show_info_dialog(self, "成功", f"配置 '{current_config}' 已删除")
+
+    def update_llm_selection_models(self):
+        """更新LLM模型选择选项卡中的模型列表"""
+        llm_configs = self.config.get("llm_configs", {})
+        available_models = list(llm_configs.keys()) if llm_configs else []
+
+        # 更新所有模型选择下拉框
+        if hasattr(self, 'prompt_draft_llm'):
+            self.update_combobox_items(self.prompt_draft_llm, available_models)
+        if hasattr(self, 'architecture_llm'):
+            self.update_combobox_items(self.architecture_llm, available_models)
+        if hasattr(self, 'chapter_outline_llm'):
+            self.update_combobox_items(self.chapter_outline_llm, available_models)
+        if hasattr(self, 'final_chapter_llm'):
+            self.update_combobox_items(self.final_chapter_llm, available_models)
+        if hasattr(self, 'consistency_review_llm'):
+            self.update_combobox_items(self.consistency_review_llm, available_models)
+
+    def update_combobox_items(self, combobox: QComboBox, items: list):
+        """更新下拉框选项"""
+        current_text = combobox.currentText()
+        combobox.clear()
+        combobox.addItems(items)
+        # 保持之前的选中项
+        if current_text in items:
+            combobox.setCurrentText(current_text)
 
     def test_llm_connection(self):
         """测试LLM连接 - 预防性编程"""
@@ -659,8 +814,11 @@ class ConfigWidget(QWidget):
     def save_config(self):
         """保存配置"""
         self.update_config_from_ui()
-        # 这里调用实际的保存函数
-        show_info_dialog(self, "成功", "配置已保存")
+        # 调用实际的保存函数
+        if save_config(self.config, None):
+            show_info_dialog(self, "成功", "配置已保存")
+        else:
+            show_error_dialog(self, "错误", "保存配置失败")
 
     def reset_config(self):
         """重置配置"""
@@ -699,6 +857,18 @@ class ConfigWidget(QWidget):
                 self.config["choose_configs"] = {}
             self.config["choose_configs"]["default"] = current_config_name
 
+            # 更新LLM模型选择配置
+            if hasattr(self, 'prompt_draft_llm'):
+                self.config["choose_configs"]["prompt_draft_llm"] = self.prompt_draft_llm.currentText()
+            if hasattr(self, 'architecture_llm'):
+                self.config["choose_configs"]["architecture_llm"] = self.architecture_llm.currentText()
+            if hasattr(self, 'chapter_outline_llm'):
+                self.config["choose_configs"]["chapter_outline_llm"] = self.chapter_outline_llm.currentText()
+            if hasattr(self, 'final_chapter_llm'):
+                self.config["choose_configs"]["final_chapter_llm"] = self.final_chapter_llm.currentText()
+            if hasattr(self, 'consistency_review_llm'):
+                self.config["choose_configs"]["consistency_review_llm"] = self.consistency_review_llm.currentText()
+
         # 更新嵌入配置
         embedding_interface = self.embedding_interface.currentText()
         if "embedding_configs" not in self.config:
@@ -723,7 +893,13 @@ class ConfigWidget(QWidget):
         }
 
         # 更新高级配置
+        # 日志设置
         self.config.update({
+            "log_level": self.log_level.currentText(),
+            "log_file": self.log_file.text(),
+            "max_workers": self.max_workers.value(),
+            "request_timeout": self.request_timeout.value(),
+            "retry_count": self.retry_count.value(),
             "auto_save": self.auto_save.isChecked(),
             "save_interval": self.save_interval.value(),
             "show_tooltips": self.show_tooltips.isChecked()

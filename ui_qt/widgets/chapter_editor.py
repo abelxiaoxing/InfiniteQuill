@@ -6,6 +6,7 @@
 """
 
 from typing import Dict, Any, Optional, List
+import os
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QSplitter,
     QGroupBox, QLabel, QLineEdit, QTextEdit, QSpinBox,
@@ -20,6 +21,7 @@ from ..utils.ui_helpers import (
     create_separator, set_font_size, show_info_dialog,
     show_error_dialog, create_label_with_help
 )
+from novel_generator.data_manager import DataManager
 
 
 class ChapterEditor(QWidget):
@@ -36,6 +38,7 @@ class ChapterEditor(QWidget):
         self.current_chapter = 1
         self.current_project_path = ""
         self.is_modified = False
+        self.data_manager = None
         self.setup_ui()
         self.setup_editor_actions()
         self.setup_context_menus()
@@ -46,12 +49,6 @@ class ChapterEditor(QWidget):
         layout.setContentsMargins(10, 10, 10, 10)
         layout.setSpacing(10)
 
-        # 创建标题
-        title_label = QLabel(" 章节编辑器")
-        set_font_size(title_label, 14, bold=True)
-        title_label.setAlignment(Qt.AlignCenter)
-        title_label.setStyleSheet("padding: 10px; background-color: #e3f2fd; border-radius: 6px; margin-bottom: 10px;")
-        layout.addWidget(title_label)
 
         # 创建主分割器
         main_splitter = QSplitter(Qt.Horizontal)
@@ -80,7 +77,7 @@ class ChapterEditor(QWidget):
         layout.setSpacing(10)
 
         # 章节导航组
-        nav_group = QGroupBox("📚 章节导航")
+        nav_group = QGroupBox("章节导航")
         nav_layout = QVBoxLayout(nav_group)
 
         # 章节选择器
@@ -110,14 +107,16 @@ class ChapterEditor(QWidget):
 
         # 视图切换
         view_layout = QHBoxLayout()
-        self.list_view_btn = QPushButton("")
+        self.list_view_btn = QPushButton("列表")
         self.list_view_btn.setCheckable(True)
         self.list_view_btn.setChecked(True)
+        self.list_view_btn.setToolTip("列表视图")
         self.list_view_btn.clicked.connect(lambda: self.switch_view("list"))
         view_layout.addWidget(self.list_view_btn)
 
-        self.tree_view_btn = QPushButton("🌲")
+        self.tree_view_btn = QPushButton("树形")
         self.tree_view_btn.setCheckable(True)
+        self.tree_view_btn.setToolTip("树形视图")
         self.tree_view_btn.clicked.connect(lambda: self.switch_view("tree"))
         view_layout.addWidget(self.tree_view_btn)
 
@@ -431,11 +430,13 @@ class ChapterEditor(QWidget):
         toolbar_layout.addWidget(create_separator("vertical"))
 
         # 功能按钮
-        self.insert_image_btn = QPushButton("")
+        self.insert_image_btn = QPushButton("图片")
+        self.insert_image_btn.setToolTip("插入图片")
         self.insert_image_btn.clicked.connect(self.insert_image)
         toolbar_layout.addWidget(self.insert_image_btn)
 
-        self.insert_link_btn = QPushButton("")
+        self.insert_link_btn = QPushButton("链接")
+        self.insert_link_btn.setToolTip("插入链接")
         self.insert_link_btn.clicked.connect(self.insert_link)
         toolbar_layout.addWidget(self.insert_link_btn)
 
@@ -567,22 +568,96 @@ class ChapterEditor(QWidget):
 
     def load_chapter(self, chapter_number: int):
         """加载章节"""
-        # 这里实现加载章节的逻辑
-        # 暂时模拟加载
-        self.chapter_editor.setPlainText(f"第{chapter_number}章的内容...")
-        self.chapter_title_edit.setText(f"第{chapter_number}章")
-        self.is_modified = False
-        self.status_label.setText(" 已保存")
-        self.status_label.setStyleSheet("padding: 2px 8px; background-color: #d4edda; color: #155724; border-radius: 3px;")
+        if not self.data_manager:
+            show_error_dialog(self, "错误", "请先创建或加载项目")
+            return
+
+        try:
+            # 保存当前章节（如果已修改）
+            if self.is_modified and self.current_chapter > 0:
+                self.save_current_chapter()
+
+            # 加载指定章节
+            content = self.data_manager.load_chapter(chapter_number)
+
+            # 如果内容为空，创建一个基本结构
+            if not content.strip():
+                content = f"\n\n\n# 第{chapter_number}章\n\n在此开始写作...\n"
+
+            # 尝试从内容中提取标题
+            title = self._extract_title_from_content(content) or f"第{chapter_number}章"
+            content_without_title = self._remove_title_from_content(content)
+
+            # 设置章节内容
+            self.chapter_editor.setPlainText(content_without_title)
+            self.chapter_title_edit.setText(title)
+
+            # 更新当前章节号
+            self.current_chapter = chapter_number
+
+            # 重置修改状态
+            self.is_modified = False
+
+            # 更新状态栏
+            self.status_label.setText(" 已保存")
+            self.status_label.setStyleSheet("padding: 2px 8px; background-color: #d4edda; color: #155724; border-radius: 3px;")
+
+            # 更新统计信息
+            self.update_statistics()
+
+        except Exception as e:
+            show_error_dialog(self, "错误", f"加载章节失败:\n{str(e)}")
+
+    def _extract_title_from_content(self, content: str) -> Optional[str]:
+        """从内容中提取标题"""
+        lines = content.split('\n')
+        for line in lines:
+            line = line.strip()
+            if line.startswith('#'):
+                return line.lstrip('#').strip()
+        return None
+
+    def _remove_title_from_content(self, content: str) -> str:
+        """从内容中移除标题行"""
+        lines = content.split('\n')
+        start_index = 0
+        for i, line in enumerate(lines):
+            if line.strip().startswith('#'):
+                start_index = i + 1
+        return '\n'.join(lines[start_index:])
 
     def save_current_chapter(self):
         """保存当前章节"""
+        if not self.data_manager:
+            show_error_dialog(self, "错误", "请先创建或加载项目")
+            return
+
+        if self.current_chapter <= 0:
+            show_error_dialog(self, "错误", "请先选择要保存的章节")
+            return
+
         if self.is_modified:
-            # 这里实现保存逻辑
-            self.is_modified = False
-            self.status_label.setText(" 已保存")
-            self.status_label.setStyleSheet("padding: 2px 8px; background-color: #d4edda; color: #155724; border-radius: 3px;")
-            self.chapter_saved.emit(self.current_chapter)
+            try:
+                # 获取章节内容
+                content = self.chapter_editor.toPlainText()
+                title = self.chapter_title_edit.text() or f"第{self.current_chapter}章"
+
+                # 保存章节
+                self.data_manager.save_chapter(self.current_chapter, content, title)
+
+                # 更新状态
+                self.is_modified = False
+                self.status_label.setText(" 已保存")
+                self.status_label.setStyleSheet("padding: 2px 8px; background-color: #d4edda; color: #155724; border-radius: 3px;")
+
+                # 刷新章节列表中的标题
+                self.refresh_chapter_list()
+
+                # 发送信号
+                self.chapter_saved.emit(self.current_chapter)
+
+            except Exception as e:
+                show_error_dialog(self, "错误", f"保存章节失败:\n{str(e)}")
 
     def prev_chapter(self):
         """上一章"""
@@ -598,54 +673,381 @@ class ChapterEditor(QWidget):
 
     def add_chapter(self):
         """添加章节"""
-        # 这里实现添加章节的逻辑
-        show_info_dialog(self, "提示", "章节添加功能待实现")
+        if not self.data_manager:
+            show_error_dialog(self, "错误", "请先创建或加载项目")
+            return
+
+        from PySide6.QtWidgets import QInputDialog
+
+        # 弹出输入对话框
+        chapter_title, ok = QInputDialog.getText(
+            self, "添加章节", "请输入章节标题:", text=f"第X章"
+        )
+
+        if ok and chapter_title.strip():
+            chapter_title = chapter_title.strip()
+
+            try:
+                # 获取下一个章节号
+                existing_chapters = self.data_manager.list_chapters()
+                next_chapter_num = max(existing_chapters) + 1 if existing_chapters else 1
+
+                # 创建空章节内容
+                empty_content = f"\n\n\n# {chapter_title}\n\n在此开始写作...\n"
+
+                # 保存章节
+                self.data_manager.save_chapter(next_chapter_num, empty_content, chapter_title)
+
+                # 刷新章节列表
+                self.refresh_chapter_list()
+
+                # 加载新章节
+                self.load_chapter(next_chapter_num)
+
+                # 更新选择器
+                self.chapter_selector.setCurrentIndex(next_chapter_num - 1)
+
+                show_info_dialog(self, "成功", f"章节 '{chapter_title}' 已添加")
+
+            except Exception as e:
+                show_error_dialog(self, "错误", f"添加章节失败:\n{str(e)}")
 
     def delete_chapter(self):
         """删除章节"""
+        if not self.data_manager:
+            show_error_dialog(self, "错误", "请先创建或加载项目")
+            return
+
+        if self.current_chapter <= 0:
+            show_error_dialog(self, "错误", "请先选择要删除的章节")
+            return
+
         reply = QMessageBox.question(
             self, "确认删除",
             f"确定要删除第{self.current_chapter}章吗？\n此操作不可撤销。",
             QMessageBox.Yes | QMessageBox.No,
             QMessageBox.No
         )
+
         if reply == QMessageBox.Yes:
-            # 这里实现删除逻辑
-            show_info_dialog(self, "成功", "章节已删除")
+            try:
+                # 删除章节
+                self.data_manager.delete_chapter(self.current_chapter)
+
+                # 刷新章节列表
+                self.refresh_chapter_list()
+
+                # 加载下一个章节或上一个章节
+                remaining_chapters = self.data_manager.list_chapters()
+                if remaining_chapters:
+                    # 加载离删除章节最近的章节
+                    next_chapter = min(remaining_chapters, key=lambda x: abs(x - self.current_chapter))
+                    self.load_chapter(next_chapter)
+                    # 更新选择器
+                    self.chapter_selector.setCurrentIndex(next_chapter - 1)
+                else:
+                    # 如果没有章节了，清空编辑器
+                    self.chapter_editor.clear()
+                    self.chapter_title_edit.clear()
+                    self.is_modified = False
+                    self.status_label.setText(" 未选择章节")
+                    self.status_label.setStyleSheet("padding: 2px 8px; background-color: #f8f9fa; color: #666; border-radius: 3px;")
+
+                show_info_dialog(self, "成功", f"第{self.current_chapter}章已删除")
+
+            except Exception as e:
+                show_error_dialog(self, "错误", f"删除章节失败:\n{str(e)}")
 
     def reorder_chapters(self):
         """调整章节顺序"""
-        show_info_dialog(self, "提示", "章节排序功能待实现")
+        if not self.data_manager:
+            show_error_dialog(self, "错误", "请先创建或加载项目")
+            return
+
+        from PySide6.QtWidgets import QDialog, QVBoxLayout, QHBoxLayout, QPushButton, QListWidget, QListWidgetItem, QLabel, QMessageBox
+
+        # 创建章节重排序对话框
+        dialog = QDialog(self)
+        dialog.setWindowTitle("章节重排序")
+        dialog.setModal(True)
+        dialog.resize(400, 500)
+        layout = QVBoxLayout(dialog)
+
+        # 说明文字
+        label = QLabel("拖拽或使用按钮调整章节顺序:")
+        layout.addWidget(label)
+
+        # 章节列表
+        chapter_list = QListWidget()
+        layout.addWidget(chapter_list)
+
+        # 按钮布局
+        button_layout = QHBoxLayout()
+
+        up_btn = QPushButton("上移")
+        down_btn = QPushButton("下移")
+        cancel_btn = QPushButton("取消")
+        confirm_btn = QPushButton("确认")
+
+        button_layout.addWidget(up_btn)
+        button_layout.addWidget(down_btn)
+        button_layout.addStretch()
+        button_layout.addWidget(cancel_btn)
+        button_layout.addWidget(confirm_btn)
+
+        layout.addLayout(button_layout)
+
+        # 加载章节列表
+        chapters = self.data_manager.list_chapters()
+        for i, chapter_num in enumerate(chapters):
+            # 尝试获取章节标题
+            content = self.data_manager.load_chapter(chapter_num)
+            title = self._extract_title_from_content(content) or f"第{chapter_num}章"
+            item = QListWidgetItem(f"{title} (编号: {chapter_num})")
+            item.setData(Qt.UserRole, chapter_num)  # 存储章节号
+            chapter_list.addItem(item)
+
+        # 上移按钮
+        def move_up():
+            current_row = chapter_list.currentRow()
+            if current_row > 0:
+                item = chapter_list.takeItem(current_row)
+                chapter_list.insertItem(current_row - 1, item)
+                chapter_list.setCurrentRow(current_row - 1)
+
+        # 下移按钮
+        def move_down():
+            current_row = chapter_list.currentRow()
+            if current_row < chapter_list.count() - 1:
+                item = chapter_list.takeItem(current_row)
+                chapter_list.insertItem(current_row + 1, item)
+                chapter_list.setCurrentRow(current_row + 1)
+
+        up_btn.clicked.connect(move_up)
+        down_btn.clicked.connect(move_down)
+        cancel_btn.clicked.connect(dialog.reject)
+        confirm_btn.clicked.connect(dialog.accept)
+
+        # 显示对话框
+        if dialog.exec() == QDialog.Accepted:
+            # 获取新的顺序
+            new_order = []
+            for i in range(chapter_list.count()):
+                item = chapter_list.item(i)
+                if item:
+                    chapter_num = item.data(Qt.UserRole)
+                    new_order.append(chapter_num)
+
+            # 检查顺序是否改变
+            if new_order != chapters:
+                try:
+                    # 重新编号章节
+                    self._reorder_chapters_in_files(new_order)
+                    # 刷新章节列表
+                    self.refresh_chapter_list()
+                    # 重新加载当前章节
+                    if self.current_chapter in new_order:
+                        self.load_chapter(self.current_chapter)
+
+                    show_info_dialog(self, "成功", "章节顺序已调整")
+
+                except Exception as e:
+                    show_error_dialog(self, "错误", f"调整章节顺序失败:\n{str(e)}")
+
+    def _reorder_chapters_in_files(self, new_order: List[int]):
+        """重新编号章节文件"""
+        if not self.data_manager:
+            return
+
+        # 获取所有章节内容
+        chapter_contents = {}
+        for chapter_num in new_order:
+            content = self.data_manager.load_chapter(chapter_num)
+            title = self._extract_title_from_content(content) or f"第{chapter_num}章"
+            chapter_contents[chapter_num] = (content, title)
+
+        # 删除所有现有章节
+        for chapter_num in new_order:
+            try:
+                self.data_manager.delete_chapter(chapter_num)
+            except:
+                pass  # 忽略删除失败
+
+        # 按新顺序重新保存
+        for i, chapter_num in enumerate(new_order, 1):
+            if chapter_num in chapter_contents:
+                content, title = chapter_contents[chapter_num]
+                self.data_manager.save_chapter(i, content, title)
 
     def apply_format(self, format_type: str):
-        """应用格式"""
+        """应用文本格式
+
+        Args:
+            format_type: 格式类型，支持 "bold"、"italic"、"underline"
+        """
+        from PySide6.QtGui import QTextCharFormat
+
         cursor = self.chapter_editor.textCursor()
         if not cursor.hasSelection():
             return
 
-        # 这里实现格式化逻辑
+        # 获取当前选中的文本格式
+        format = cursor.charFormat()
+
+        # 根据格式类型应用不同的样式
         if format_type == "bold":
-            # 粗体
-            pass
+            # 粗体 - 切换粗体状态
+            weight = QTextCharFormat.Bold if not format.fontWeight() == QTextCharFormat.Bold else QTextCharFormat.Normal
+            format.setFontWeight(weight)
         elif format_type == "italic":
-            # 斜体
-            pass
+            # 斜体 - 切换斜体状态
+            format.setFontItalic(not format.fontItalic())
         elif format_type == "underline":
-            # 下划线
-            pass
+            # 下划线 - 切换下划线状态
+            format.setUnderlineStyle(QTextCharFormat.SingleUnderline if not format.fontUnderline() else QTextCharFormat.NoUnderline)
+
+        # 应用格式到选中的文本
+        cursor.mergeCharFormat(format)
 
     def apply_alignment(self, alignment: str):
-        """应用对齐"""
-        # 这里实现对齐逻辑
-        pass
+        """应用文本对齐
+
+        Args:
+            alignment: 对齐方式，支持 "left"、"center"、"right"
+        """
+        from PySide6.QtCore import Qt
+        from PySide6.QtGui import QTextBlockFormat
+
+        cursor = self.chapter_editor.textCursor()
+
+        # 创建段落格式对象
+        block_format = QTextBlockFormat()
+
+        # 根据对齐方式设置不同的对齐属性
+        if alignment == "left":
+            # 左对齐
+            block_format.setAlignment(Qt.AlignLeft)
+        elif alignment == "center":
+            # 居中对齐
+            block_format.setAlignment(Qt.AlignCenter)
+        elif alignment == "right":
+            # 右对齐
+            block_format.setAlignment(Qt.AlignRight)
+
+        # 应用段落格式（如果没有选中内容，则应用到当前段落）
+        if not cursor.hasSelection():
+            cursor.select(QTextCursor.SelectionType.LineUnderCursor)
+
+        cursor.mergeBlockFormat(block_format)
 
     def insert_image(self):
-        """插入图片"""
-        show_info_dialog(self, "提示", "图片插入功能待实现")
+        """插入图片到文本中"""
+        from PySide6.QtWidgets import QFileDialog
+        from PySide6.QtGui import QTextImageFormat
+        from PySide6.QtCore import QUrl
+        import os
+
+        # 打开文件选择对话框
+        file_path, _ = QFileDialog.getOpenFileName(
+            self,
+            "选择图片",
+            "",
+            "图片文件 (*.png *.jpg *.jpeg *.gif *.bmp *.svg);;所有文件 (*)"
+        )
+
+        if file_path:
+            try:
+                # 检查文件是否存在
+                if not os.path.exists(file_path):
+                    show_error_dialog(self, "错误", "选择的图片文件不存在")
+                    return
+
+                # 获取文件名
+                file_name = os.path.basename(file_path)
+
+                # 转换为绝对路径（QUrl需要本地文件路径）
+                absolute_path = os.path.abspath(file_path)
+
+                # 创建文本光标
+                cursor = self.chapter_editor.textCursor()
+
+                # 创建图片格式
+                image_format = QTextImageFormat()
+                image_format.setName(QUrl.fromLocalFile(absolute_path).toString())
+                image_format.setWidth(300)  # 默认宽度
+                image_format.setHeight(200)  # 默认高度
+
+                # 插入图片
+                cursor.insertImage(image_format)
+
+                # 在图片后添加换行
+                cursor.insertBlock()
+
+                show_info_dialog(self, "成功", f"图片 '{file_name}' 已插入")
+
+            except Exception as e:
+                show_error_dialog(self, "错误", f"插入图片失败:\n{str(e)}")
 
     def insert_link(self):
-        """插入链接"""
-        show_info_dialog(self, "提示", "链接插入功能待实现")
+        """插入链接到文本中"""
+        from PySide6.QtWidgets import QInputDialog
+        from PySide6.QtGui import QTextCharFormat
+        from PySide6.QtCore import QUrl
+        import re
+
+        # 打开输入对话框获取URL和链接文本
+        url, ok1 = QInputDialog.getText(
+            self,
+            "插入链接",
+            "请输入链接地址 (URL):",
+            text="https://"
+        )
+
+        if not ok1 or not url:
+            return
+
+        # 验证URL格式
+        url = url.strip()
+        if not re.match(r'^https?://', url) and not re.match(r'^www\.', url):
+            show_error_dialog(self, "错误", "请输入有效的URL地址（以http://或https://开头）")
+            return
+
+        # 如果没有协议，添加http://
+        if not re.match(r'^https?://', url):
+            url = "http://" + url
+
+        # 获取链接文本
+        link_text, ok2 = QInputDialog.getText(
+            self,
+            "插入链接",
+            "请输入链接显示文本:",
+            text="链接文本"
+        )
+
+        if not ok2 or not link_text:
+            return
+
+        try:
+            # 创建文本光标
+            cursor = self.chapter_editor.textCursor()
+
+            # 创建链接格式
+            link_format = QTextCharFormat()
+            link_format.setForeground(Qt.blue)  # 设置蓝色
+            link_format.setFontUnderline(True)  # 添加下划线
+            link_format.setAnchor(True)  # 标记为锚点
+            link_format.setAnchorHref(url)  # 设置链接地址
+
+            # 插入链接文本
+            cursor.insertText(link_text, link_format)
+
+            # 在链接后添加空格
+            cursor.insertText(" ")
+
+            show_info_dialog(self, "成功", f"链接已插入: {link_text}")
+
+        except Exception as e:
+            show_error_dialog(self, "错误", f"插入链接失败:\n{str(e)}")
 
     def refresh_preview(self):
         """刷新预览"""
@@ -660,26 +1062,55 @@ class ChapterEditor(QWidget):
 
     def load_project(self, project_path: str):
         """加载项目"""
-        self.current_project_path = project_path
-        # 这里实现项目加载逻辑
-        self.refresh_chapter_list()
+        try:
+            self.current_project_path = project_path
+            # 初始化数据管理器
+            self.data_manager = DataManager(project_path)
+
+            # 刷新章节列表
+            self.refresh_chapter_list()
+
+            # 加载第一个章节（如果存在）
+            chapters = self.data_manager.list_chapters()
+            if chapters:
+                self.load_chapter(chapters[0])
+                # 同步章节选择器
+                self.chapter_selector.setCurrentIndex(0)
+
+        except Exception as e:
+            show_error_dialog(self, "错误", f"加载项目失败:\n{str(e)}")
 
     def refresh_chapter_list(self):
         """刷新章节列表"""
-        # 模拟加载章节列表
+        # 清空现有列表
         self.chapter_selector.clear()
         self.chapter_list.clear()
 
-        for i in range(1, 21):  # 假设20章
-            chapter_title = f"第{i}章"
-            self.chapter_selector.addItem(chapter_title)
-            item = QListWidgetItem(chapter_title)
-            self.chapter_list.addItem(item)
+        # 如果没有数据管理器，则只显示默认内容
+        if not self.data_manager:
+            self.total_chapters_label.setText("0")
+            self.completed_chapters_label.setText("0")
+            self.total_words_label.setText("0")
+            return
 
-        # 更新统计
-        self.total_chapters_label.setText(str(self.chapter_selector.count()))
-        self.completed_chapters_label.setText("0")  # 这里应该是实际的完成数
-        self.total_words_label.setText("0")  # 这里应该是总字数
+        try:
+            # 从数据管理器获取章节列表
+            chapters = self.data_manager.list_chapters()
+
+            # 添加章节到列表
+            for chapter_num in chapters:
+                chapter_title = f"第{chapter_num}章"
+                self.chapter_selector.addItem(chapter_title)
+                item = QListWidgetItem(chapter_title)
+                self.chapter_list.addItem(item)
+
+            # 更新统计信息
+            self.total_chapters_label.setText(str(len(chapters)))
+            self.completed_chapters_label.setText(str(len(chapters)))  # 假设所有显示的章节都已完成
+            self.total_words_label.setText(str(self.data_manager.load_project_config().get("word_count", 0)))
+
+        except Exception as e:
+            show_error_dialog(self, "错误", f"刷新章节列表失败:\n{str(e)}")
 
     def get_current_content(self) -> str:
         """获取当前内容"""
@@ -694,46 +1125,55 @@ class ChapterEditor(QWidget):
 
     def load_global_summary(self):
         """加载全局概览文件"""
-        if not self.current_project_path:
-            show_info_dialog(self, "提示", "请先设置项目路径")
+        if not self.data_manager:
+            show_error_dialog(self, "错误", "请先创建或加载项目")
             return
 
-        summary_file = os.path.join(self.current_project_path, "global_summary.txt")
         try:
-            if os.path.exists(summary_file):
-                with open(summary_file, 'r', encoding='utf-8') as f:
-                    content = f.read()
-                self.summary_editor.setPlainText(content)
-                show_info_dialog(self, "成功", "已加载 global_summary.txt")
-            else:
-                show_info_dialog(self, "提示", f"文件不存在: {summary_file}\n可以手动创建内容后保存")
+            # 使用DataManager加载概览
+            content = self.data_manager.load_summary()
+
+            # 如果内容为空，设置默认模板
+            if not content.strip():
+                content = self._get_default_summary_template()
+
+            self.summary_editor.setPlainText(content)
+            self.update_summary_word_count()
+
         except Exception as e:
-            show_error_dialog(self, "错误", f"加载文件失败: {str(e)}")
+            show_error_dialog(self, "错误", f"加载全局概览失败:\n{str(e)}")
 
     def save_global_summary(self):
         """保存全局概览文件"""
-        if not self.current_project_path:
-            show_info_dialog(self, "提示", "请先设置项目路径")
+        if not self.data_manager:
+            show_error_dialog(self, "错误", "请先创建或加载项目")
             return
 
-        summary_file = os.path.join(self.current_project_path, "global_summary.txt")
         try:
+            # 获取编辑内容
             content = self.summary_editor.toPlainText().strip()
-            with open(summary_file, 'w', encoding='utf-8') as f:
-                f.write(content)
-            show_info_dialog(self, "成功", "已保存到 global_summary.txt")
+
+            # 使用DataManager保存概览
+            self.data_manager.save_summary(content)
+
+            # 更新字数统计
+            self.update_summary_word_count()
+
+            show_info_dialog(self, "成功", "全局概览已保存")
+
         except Exception as e:
-            show_error_dialog(self, "错误", f"保存文件失败: {str(e)}")
+            show_error_dialog(self, "错误", f"保存全局概览失败:\n{str(e)}")
 
     def update_summary_word_count(self):
         """更新概览字数统计"""
         text = self.summary_editor.toPlainText()
-        count = len(text)
+        # 简单字数统计（去除空白字符）
+        count = len(text.replace(" ", "").replace("\n", ""))
         self.summary_word_count.setText(str(count))
 
-    def insert_summary_template(self):
-        """插入概览模板"""
-        template = """# 小说项目概览
+    def _get_default_summary_template(self) -> str:
+        """获取默认概览模板"""
+        return """# 小说项目概览
 
 ## 项目基本信息
 - **小说标题**: [在此填写小说标题]
@@ -742,68 +1182,86 @@ class ChapterEditor(QWidget):
 - **目标章节**: [预计章节数]
 
 ## 故事主题与核心创意
-[描述小说的核心主题、主要创意和想要表达的思想]
+### 主题
+[描述故事的核心主题，如成长、友谊、复仇等]
+
+### 核心创意
+[描述独特的故事设定、背景或概念]
+
+### 目标读者
+[描述主要读者群体]
 
 ## 世界观设定
 ### 时代背景
-[故事发生的时代]
+[故事发生的时间、地点、社会环境等]
 
-### 世界观特点
-[世界的独特设定，如魔法系统、科技水平等]
+### 世界规则
+[魔法系统、科技设定、社会制度等特殊规则]
 
-### 重要地点
-- [地点1]: [描述]
-- [地点2]: [描述]
-- [地点3]: [描述]
+### 地理环境
+[主要场景描述]
 
 ## 主要角色
 ### 主角
-- **姓名**: [角色姓名]
-- **身份**: [角色身份]
-- **性格**: [主要性格特点]
-- **背景**: [角色背景故事]
-- **目标**: [角色的主要目标]
+- **姓名**:
+- **性格特点**:
+- **背景故事**:
+- **目标与动机**:
 
 ### 重要配角
-- **配角1**: [描述]
-- **配角2**: [描述]
-- **配角3**: [描述]
+[其他重要角色的简要描述]
 
-## 故事大纲
-### 第一幕（开头）
-[故事开端，主要矛盾引入]
+### 反派角色
+[主要反派的描述]
 
-### 第二幕（发展）
-[故事发展，冲突升级]
+## 剧情大纲
+### 开端
+[故事如何开始]
 
-### 第三幕（高潮与结局）
-[故事高潮，矛盾解决]
+### 发展
+[主要冲突的建立和发展]
 
-## 剧情发展脉络
-[整个故事的主要线索和发展脉络]
+### 高潮
+[故事的转折点和高潮部分]
 
-## 主要冲突
-### 外部冲突
-[与外界环境的冲突]
+### 结局
+[故事如何结束]
 
-### 内部冲突
-[角色内心的矛盾和成长]
+## 章节规划
+[简要描述各章节的主要内容和发展脉络]
 
-## 主题与意义
-[小说想要探讨的主题和深层含义]
+## 特殊设定
+[需要特别注意的设定或伏笔]
 
-## 写作要点
-- **文风**: [描述希望使用的文风]
-- **节奏**: [故事节奏控制要点]
-- **重点**: [需要重点描写的部分]
-- **注意事项**: [写作时需要注意的事项]
+## 写作注意事项
+[提醒自己在写作过程中需要注意的要点]
 
 ---
-
-*创建时间: """ + QTimer().currentTime().toString() + """*
+*此概览文档由 InfiniteQuill AI小说生成器生成*
 """
-        self.summary_editor.setPlainText(template)
-        show_info_dialog(self, "成功", "已插入概览模板，请根据实际情况修改")
+
+    def insert_summary_template(self):
+        """插入概览模板"""
+        try:
+            # 获取默认模板
+            template = self._get_default_summary_template()
+
+            # 确认是否要插入
+            from PySide6.QtWidgets import QMessageBox
+            reply = QMessageBox.question(
+                self, "确认插入",
+                "确定要插入概览模板吗？\n这将替换当前内容。",
+                QMessageBox.Yes | QMessageBox.No,
+                QMessageBox.No
+            )
+
+            if reply == QMessageBox.Yes:
+                self.summary_editor.setPlainText(template)
+                self.update_summary_word_count()
+                show_info_dialog(self, "成功", "概览模板已插入")
+
+        except Exception as e:
+            show_error_dialog(self, "错误", f"插入模板失败:\n{str(e)}")
 
     def setup_context_menus(self):
         """设置上下文菜单"""

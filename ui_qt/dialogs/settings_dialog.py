@@ -22,14 +22,19 @@ from ..utils.ui_helpers import (
     create_separator, set_font_size, show_info_dialog,
     show_error_dialog, create_label_with_help
 )
+from config_manager import get_user_config_path
 
 
 class SettingsDialog(QDialog):
     """设置对话框"""
 
+    # 信号定义
+    settings_applied = Signal(dict)  # 设置已应用信号
+
     def __init__(self, config: Dict[str, Any], parent=None):
         super().__init__(parent)
         self.config = config.copy()
+        self.original_config = config.copy()  # 保存原始配置
         self.setup_ui()
         self.load_settings()
 
@@ -534,56 +539,97 @@ F5: 刷新预览              F11: 全屏模式""")
 
     def apply_settings(self):
         """应用设置"""
-        # 收集所有设置
-        new_config = {
-            "general_settings": {
-                "auto_load_project": self.auto_load_project.isChecked(),
-                "show_splash": self.show_splash.isChecked(),
-                "check_updates": self.check_updates.isChecked(),
-                "default_save_path": self.default_save_path.text(),
-                "auto_save_interval": self.auto_save_interval.value(),
-                "max_backup_files": self.max_backup_files.value(),
-                "interface_language": self.interface_language.currentText(),
-                "content_language": self.content_language.currentText()
-            },
-            "editor_settings": {
-                "font": self.editor_font.currentText(),
-                "font_size": self.editor_font_size.value(),
-                "line_spacing": self.line_spacing.value(),
-                "word_wrap": self.word_wrap.isChecked(),
-                "auto_complete": self.auto_complete.isChecked(),
-                "auto_indent": self.auto_indent.isChecked(),
-                "show_line_numbers": self.show_line_numbers.isChecked(),
-                "highlight_syntax": self.highlight_syntax.isChecked()
-            },
-            "theme_settings": {
-                "current_theme": self.get_selected_theme(),
-                "primary_color": getattr(self, 'primary_color', '#2196f3'),
-                "accent_color": getattr(self, 'accent_color', '#ff9800')
-            },
-            "advanced_settings": {
-                "max_memory": self.max_memory.value(),
-                "thread_pool_size": self.thread_pool_size.value(),
-                "cache_size": self.cache_size.value(),
-                "request_timeout": self.request_timeout.value(),
-                "max_retries": self.max_retries.value(),
-                "concurrent_requests": self.concurrent_requests.value(),
-                "enable_debug": self.enable_debug.isChecked(),
-                "verbose_logging": self.verbose_logging.isChecked(),
-                "show_performance_metrics": self.show_performance_metrics.isChecked()
-            },
-            "webdav_config": {
-                "webdav_url": self.webdav_url.text().strip(),
-                "webdav_username": self.webdav_username.text().strip(),
-                "webdav_password": self.webdav_password.text().strip()
-            },
-            "architecture_settings": {
-                "file_path": self.architecture_file_path.text().strip()
+        try:
+            # 收集所有设置
+            new_config = {
+                "general_settings": {
+                    "auto_load_project": self.auto_load_project.isChecked(),
+                    "show_splash": self.show_splash.isChecked(),
+                    "check_updates": self.check_updates.isChecked(),
+                    "default_save_path": self.default_save_path.text(),
+                    "auto_save_interval": self.auto_save_interval.value(),
+                    "max_backup_files": self.max_backup_files.value(),
+                    "interface_language": self.interface_language.currentText(),
+                    "content_language": self.content_language.currentText()
+                },
+                "editor_settings": {
+                    "font": self.editor_font.currentText(),
+                    "font_size": self.editor_font_size.value(),
+                    "line_spacing": self.line_spacing.value(),
+                    "word_wrap": self.word_wrap.isChecked(),
+                    "auto_complete": self.auto_complete.isChecked(),
+                    "auto_indent": self.auto_indent.isChecked(),
+                    "show_line_numbers": self.show_line_numbers.isChecked(),
+                    "highlight_syntax": self.highlight_syntax.isChecked()
+                },
+                "theme_settings": {
+                    "current_theme": self.get_selected_theme(),
+                    "primary_color": getattr(self, 'primary_color', '#2196f3'),
+                    "accent_color": getattr(self, 'accent_color', '#ff9800')
+                },
+                "advanced_settings": {
+                    "max_memory": self.max_memory.value(),
+                    "thread_pool_size": self.thread_pool_size.value(),
+                    "cache_size": self.cache_size.value(),
+                    "request_timeout": self.request_timeout.value(),
+                    "max_retries": self.max_retries.value(),
+                    "concurrent_requests": self.concurrent_requests.value(),
+                    "enable_debug": self.enable_debug.isChecked(),
+                    "verbose_logging": self.verbose_logging.isChecked(),
+                    "show_performance_metrics": self.show_performance_metrics.isChecked()
+                },
+                "webdav_config": {
+                    "webdav_url": self.webdav_url.text().strip(),
+                    "webdav_username": self.webdav_username.text().strip(),
+                    "webdav_password": self.webdav_password.text().strip()
+                },
+                "architecture_settings": {
+                    "file_path": self.architecture_file_path.text().strip()
+                }
             }
-        }
 
-        self.config.update(new_config)
-        show_info_dialog(self, "成功", "设置已应用")
+            # 保存配置到内存
+            self.config.update(new_config)
+
+            # 保存到文件
+            self._save_config_to_file(self.config)
+
+            # 发送设置已应用信号
+            self.settings_applied.emit(self.config)
+
+            show_info_dialog(self, "成功", "设置已应用并保存")
+
+        except Exception as e:
+            show_error_dialog(self, "错误", f"应用设置失败:\n{str(e)}")
+
+    def _save_config_to_file(self, config: Dict[str, Any]):
+        """保存配置到文件"""
+        import json
+        from config_manager import save_config
+
+        try:
+            # 使用config_manager保存配置
+            save_config(config)
+        except Exception as e:
+            raise Exception(f"保存配置文件失败: {str(e)}")
+
+    def accept(self):
+        """确定按钮处理"""
+        try:
+            # 应用设置
+            self.apply_settings()
+            # 调用父类的accept关闭对话框
+            super().accept()
+        except Exception as e:
+            show_error_dialog(self, "错误", f"应用设置失败:\n{str(e)}")
+
+    def reject(self):
+        """取消按钮处理"""
+        # 恢复原始配置
+        self.config.clear()
+        self.config.update(self.original_config)
+        # 调用父类的reject关闭对话框
+        super().reject()
 
     def get_selected_theme(self) -> str:
         """获取选择的主题"""
@@ -784,13 +830,13 @@ F5: 刷新预览              F11: 全屏模式""")
             if not client.ensure_directory_exists(target_dir):
                 client.create_directory(target_dir)
 
-            from pathlib import Path
-            config_file = Path("config.json")
+            # 使用系统用户配置目录
+            config_file = get_user_config_path()
             if config_file.exists():
                 client.upload_file(str(config_file), f"{target_dir}/config.json")
                 show_info_dialog(self, "成功", "配置备份成功！")
             else:
-                show_info_dialog(self, "警告", "未找到config.json文件")
+                show_info_dialog(self, "警告", "未找到用户配置文件")
         except Exception as e:
             show_error_dialog(self, "错误", f"备份失败: {str(e)}")
 
@@ -803,7 +849,9 @@ F5: 刷新预览              F11: 全屏模式""")
                 self.webdav_username.text().strip(),
                 self.webdav_password.text().strip()
             )
-            client.download_file(f"{target_dir}/config.json", "config.json")
+            # 恢复到系统用户配置目录
+            config_file = get_user_config_path()
+            client.download_file(f"{target_dir}/config.json", str(config_file))
             show_info_dialog(self, "成功", "配置恢复成功！请重启应用程序以加载新配置。")
         except Exception as e:
             show_error_dialog(self, "错误", f"恢复失败: {str(e)}")
