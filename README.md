@@ -29,14 +29,14 @@ ui_qt/
 ### 1. 安装依赖
 
 ```bash
-pip install -r requirements_qt.txt
+pip install -r requirements.txt
 ```
 
 ### 2. 启动新界面
 
 #### 直接运行
 ```bash
-python main_qt.py
+python main.py
 ```
 
 ### 3. 配置文件
@@ -154,10 +154,10 @@ export QT_OPENGL=desktop  # Linux/macOS
 
 ```bash
 # 启用调试日志
-python main_qt.py --debug
+python main.py --debug
 
 # 显示性能指标
-python main_qt.py --profile
+python main.py --profile
 ```
 
 ## 📱 平台兼容性
@@ -208,7 +208,7 @@ git clone <repository-url>
 cd InfiniteQuill
 
 # 安装开发依赖
-pip install -r requirements_qt.txt
+pip install -r requirements.txt
 
 # 代码格式化
 black ui_qt/

@@ -7,7 +7,7 @@ PySide6现代化UI模块
 
 from PySide6.QtWidgets import QApplication
 from PySide6.QtCore import Qt, QDir
-from PySide6.QtGui import QFont
+from PySide6.QtGui import QFont, QIcon
 import sys
 import os
 

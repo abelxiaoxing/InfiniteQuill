@@ -15,7 +15,7 @@ from prompt_definitions import (
     knowledge_filter_prompt,
     knowledge_search_prompt
 )
-from chapter_directory_parser import get_chapter_info_from_blueprint
+from novel_generator.chapter_directory_parser import get_chapter_info_from_blueprint
 from novel_generator.common import invoke_with_cleaning
 from utils import read_file, clear_file_content, save_string_to_txt
 from novel_generator.vectorstore_utils import (
