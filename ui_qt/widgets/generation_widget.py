@@ -464,6 +464,8 @@ class GenerationWidget(QWidget):
         self.is_generating = False
         self.is_batch_generating = False
         self.project_manager = ProjectManager()  # 初始化项目管理器
+        # 添加self.save_path属性，向后兼容
+        self.save_path = QLineEdit()
         self.auto_save_timer = QTimer()  # 自动保存定时器
         self.auto_save_timer.timeout.connect(self.auto_save)
         self.auto_save_timer.start(30000)  # 每30秒自动保存一次
@@ -623,48 +625,20 @@ class GenerationWidget(QWidget):
         project_btn_layout.addWidget(self.open_project_btn)
         project_layout.addLayout(project_btn_layout)
 
-        project_btn_layout2 = QHBoxLayout()
-        self.save_project_btn = QPushButton(" 保存项目")
-        self.save_project_btn.clicked.connect(self.save_current_project)
-        self.save_project_btn.setEnabled(False)  # 只有打开项目后才启用
-        project_btn_layout2.addWidget(self.save_project_btn)
-
-        self.save_as_btn = QPushButton(" 另存为")
-        self.save_as_btn.clicked.connect(self.save_project_as)
-        project_btn_layout2.addWidget(self.save_as_btn)
-        project_layout.addLayout(project_btn_layout2)
+        # 移除手动保存按钮，改为完全自动保存
 
         # 当前项目信息
-        self.current_project_label = QLabel("未打开项目")
-        self.current_project_label.setStyleSheet("color: gray; font-size: 9pt;")
-        project_layout.addWidget(self.current_project_label)
+        self.current_project_name_label = QLabel("未打开项目")
+        self.current_project_name_label.setStyleSheet("color: gray; font-size: 9pt; font-weight: bold;")
+        project_layout.addWidget(self.current_project_name_label)
+
+        self.current_project_path_label = QLabel("项目路径: 无")
+        self.current_project_path_label.setStyleSheet("color: gray; font-size: 8pt;")
+        self.current_project_path_label.setWordWrap(True)
+        project_layout.addWidget(self.current_project_path_label)
 
         layout.addWidget(project_group)
-
-        # 保存路径设置
-        path_group = QGroupBox(" 保存设置")
-        path_layout = QFormLayout(path_group)
-
-        path_layout.addRow("保存路径:", self.create_path_selector())
-
-        layout.addWidget(path_group)
         layout.addStretch()
-
-        return widget
-
-    def create_path_selector(self) -> QWidget:
-        """创建路径选择器"""
-        widget = QWidget()
-        layout = QHBoxLayout(widget)
-        layout.setContentsMargins(0, 0, 0, 0)
-
-        self.save_path = QLineEdit()
-        self.save_path.setPlaceholderText("选择保存路径...")
-        layout.addWidget(self.save_path)
-
-        self.browse_btn = QPushButton(" 浏览")
-        self.browse_btn.clicked.connect(self.browse_save_path)
-        layout.addWidget(self.browse_btn)
 
         return widget
 
@@ -1057,17 +1031,7 @@ class GenerationWidget(QWidget):
             self.novel_genre.setCurrentText(other_params.get("genre", "玄幻"))
             self.chapter_count.setValue(other_params.get("num_chapters", 20))
             self.word_count.setValue(other_params.get("word_number", 3000))
-            self.save_path.setText(other_params.get("filepath", ""))
-
-    def browse_save_path(self):
-        """浏览保存路径"""
-        from PySide6.QtWidgets import QFileDialog
-
-        directory = QFileDialog.getExistingDirectory(
-            self, "选择保存路径", self.save_path.text()
-        )
-        if directory:
-            self.save_path.setText(directory)
+            # 移除save_path加载，因为项目路径由项目管理决定
 
     def browse_file(self, line_edit: QLineEdit):
         """浏览文件"""
@@ -1689,10 +1653,11 @@ class GenerationWidget(QWidget):
         # 创建项目
         if self.project_manager.create_project(full_path, project_info):
             # 更新UI
-            self.save_path.setText(full_path)
-            self.current_project_label.setText(f"当前项目: {project_name}")
-            self.current_project_label.setStyleSheet("color: green; font-size: 9pt;")
-            self.save_project_btn.setEnabled(True)
+            self.save_path.setText(full_path)  # 向后兼容
+            self.current_project_name_label.setText(f"当前项目: {project_name}")
+            self.current_project_name_label.setStyleSheet("color: green; font-size: 9pt; font-weight: bold;")
+            self.current_project_path_label.setText(f"项目路径: {full_path}")
+            self.current_project_path_label.setStyleSheet("color: green; font-size: 8pt;")
 
             self.log_message(f"项目创建成功: {full_path}")
             show_info_dialog(self, "成功", "项目创建成功！")
@@ -1725,92 +1690,15 @@ class GenerationWidget(QWidget):
         self._restore_ui_from_project_data(project_data)
 
         # 更新UI
-        self.save_path.setText(project_path)
+        self.save_path.setText(project_path)  # 向后兼容
         project_name = project_data.get("project_info", {}).get("name", "未命名")
-        self.current_project_label.setText(f"当前项目: {project_name}")
-        self.current_project_label.setStyleSheet("color: green; font-size: 9pt;")
-        self.save_project_btn.setEnabled(True)
+        self.current_project_name_label.setText(f"当前项目: {project_name}")
+        self.current_project_name_label.setStyleSheet("color: green; font-size: 9pt; font-weight: bold;")
+        self.current_project_path_label.setText(f"项目路径: {project_path}")
+        self.current_project_path_label.setStyleSheet("color: green; font-size: 8pt;")
 
         self.log_message(f"项目加载成功: {project_path}")
         show_info_dialog(self, "成功", "项目加载成功！")
-
-    def save_current_project(self):
-        """保存当前项目"""
-        # 获取当前UI数据
-        project_data = self._collect_ui_data()
-
-        # 获取项目路径
-        project_path = self.save_path.text().strip()
-        if not project_path:
-            show_error_dialog(self, "错误", "请先选择保存路径！")
-            return
-
-        # 检查是否有打开的项目
-        if not self.project_manager.get_current_project():
-            # 如果没有打开项目，先创建一个
-            project_name = self.novel_title.text().strip() or "未命名项目"
-            project_info = {
-                "name": project_name,
-                "title": self.novel_title.text().strip(),
-                "topic": self.novel_topic.toPlainText().strip(),
-                "genre": self.novel_genre.currentText(),
-                "chapter_count": self.chapter_count.value(),
-                "word_count": self.word_count.value(),
-                "worldview": self.worldview_text.toPlainText().strip(),
-                "writing_style": self.writing_style.currentText(),
-                "target_readers": self.target_readers.currentText()
-            }
-            if not self.project_manager.create_project(project_path, project_info):
-                show_error_dialog(self, "错误", "项目创建失败！")
-                return
-
-        # 保存项目
-        if self.project_manager.save_project(project_path, project_data):
-            self.log_message("项目已保存")
-            show_info_dialog(self, "成功", "项目保存成功！")
-        else:
-            show_error_dialog(self, "错误", "项目保存失败！")
-
-    def save_project_as(self):
-        """另存为项目"""
-        from PySide6.QtWidgets import QFileDialog, QInputDialog
-
-        # 获取新项目名称
-        project_name, ok = QInputDialog.getText(
-            self, "另存为", "请输入新项目名称:", text=self.novel_title.text().strip()
-        )
-        if not ok or not project_name.strip():
-            return
-
-        # 选择新保存路径
-        new_path = QFileDialog.getExistingDirectory(
-            self, "选择新项目保存位置", ""
-        )
-        if not new_path:
-            return
-
-        # 构建完整路径
-        full_path = os.path.join(new_path, project_name.strip())
-
-        # 准备项目数据
-        project_data = self._collect_ui_data()
-        project_data["project_info"]["name"] = project_name.strip()
-
-        # 创建并保存新项目
-        if self.project_manager.create_project(full_path, project_data):
-            if self.project_manager.save_project(full_path, project_data):
-                # 更新UI
-                self.save_path.setText(full_path)
-                self.current_project_label.setText(f"当前项目: {project_name}")
-                self.current_project_label.setStyleSheet("color: green; font-size: 9pt;")
-                self.save_project_btn.setEnabled(True)
-
-                self.log_message(f"项目另存为成功: {full_path}")
-                show_info_dialog(self, "成功", "项目另存为成功！")
-            else:
-                show_error_dialog(self, "错误", "项目保存失败！")
-        else:
-            show_error_dialog(self, "错误", "项目创建失败！")
 
     def _collect_ui_data(self) -> Dict[str, Any]:
         """收集当前UI数据为项目数据"""
@@ -1883,11 +1771,11 @@ class GenerationWidget(QWidget):
     def _get_generated_chapters(self) -> List[int]:
         """获取已生成的章节列表"""
         chapters = []
-        save_path = self.save_path.text().strip()
-        if not save_path:
+        project_path = self.save_path.text().strip()
+        if not project_path:
             return chapters
 
-        chapters_dir = os.path.join(save_path, "chapters")
+        chapters_dir = os.path.join(project_path, "chapters")
         if not os.path.exists(chapters_dir):
             return chapters
 
@@ -1906,11 +1794,11 @@ class GenerationWidget(QWidget):
 
     def _calculate_total_words(self) -> int:
         """计算总字数"""
-        save_path = self.save_path.text().strip()
-        if not save_path:
+        project_path = self.save_path.text().strip()
+        if not project_path:
             return 0
 
-        chapters_dir = os.path.join(save_path, "chapters")
+        chapters_dir = os.path.join(project_path, "chapters")
         if not os.path.exists(chapters_dir):
             return 0
 
@@ -1926,14 +1814,18 @@ class GenerationWidget(QWidget):
 
         return total_words
 
+    def _check_file_exists(self, filename: str) -> bool:
+        """检查项目目录中是否存在指定文件"""
+        project_path = self.save_path.text().strip()
+        if not project_path:
+            return False
+        return os.path.exists(os.path.join(project_path, filename))
+
     def auto_save(self):
         """自动保存当前项目"""
         # 只有在有打开的项目时才自动保存
-        if not self.project_manager.get_current_project():
-            return
-
-        # 只有在有保存路径时才自动保存
-        if not self.save_path.text().strip():
+        project_path = self.save_path.text().strip()
+        if not project_path:
             return
 
         try:
@@ -1941,7 +1833,8 @@ class GenerationWidget(QWidget):
             project_data = self._collect_ui_data()
 
             # 保存项目
-            self.project_manager.save_project(self.save_path.text().strip(), project_data)
+            if self.project_manager.get_current_project():
+                self.project_manager.save_project(project_path, project_data)
             # 注意：不显示对话框，只记录日志
             self.log_message("自动保存完成")
         except Exception as e:
@@ -1955,7 +1848,7 @@ class GenerationWidget(QWidget):
         self.novel_topic.textChanged.connect(self.trigger_auto_save)
         self.chapter_count.valueChanged.connect(self.trigger_auto_save)
         self.word_count.valueChanged.connect(self.trigger_auto_save)
-        self.save_path.textChanged.connect(self.trigger_auto_save)
+        # 移除save_path监听，因为项目位置由新建/打开项目决定
 
     def trigger_auto_save(self):
         """触发自动保存（延迟执行）"""

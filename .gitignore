@@ -20,3 +20,4 @@ uv.lock
 .python-version
 pyproject.toml
 *CLAUDE.md
+cache/
