@@ -815,6 +815,16 @@ class RoleManager(QWidget):
             if child.widget():
                 child.widget().deleteLater()
 
+    def refresh_role_grid(self):
+        """重新渲染角色网格"""
+        # 清除当前网格
+        self.clear_role_grid()
+
+        # 重新添加所有角色
+        for role_name, role_data in self.all_roles.items():
+            category = role_data.get("category", "未分类")
+            self.add_role_to_grid(role_name, category)
+
     def switch_view(self, view_type: str):
         """切换视图"""
         if view_type == "grid":
@@ -858,8 +868,24 @@ class RoleManager(QWidget):
 
     def create_new_role(self):
         """创建新角色 - 修复版本，避免在异步上下文中调用setFocus"""
+        # 重置当前角色
+        self.current_role = ""
+
         # 使用安全清空方式
         self._safe_clear_editor()
+
+        # 清除所有选中状态
+        for i in range(self.role_grid_layout.count()):
+            widget = self.role_grid_layout.itemAt(i).widget()
+            if isinstance(widget, QFrame):
+                widget.setStyleSheet("""
+                    QFrame {
+                        border: 2px solid #e0e0e0;
+                        border-radius: 8px;
+                        background-color: white;
+                        padding: 10px;
+                    }
+                """)
 
     def save_current_role(self):
         """保存当前角色 - 预防性编程"""
@@ -870,25 +896,20 @@ class RoleManager(QWidget):
             role_name = role_data["name"]
             validate_required(role_name, "角色名称")
 
-            # 保存角色
-            import json
-            import os
+            # 如果是新角色，设置默认分类
+            if "category" not in role_data:
+                role_data["category"] = "未分类"
 
-            if self.current_project_path:
-                role_file = os.path.join(self.current_project_path, "roles.json")
+            # 保存到内存中的角色列表
+            self.all_roles[role_name] = role_data
+            self.current_role = role_name
 
-                # 读取现有角色
-                roles = {}
-                if os.path.exists(role_file):
-                    with open(role_file, 'r', encoding='utf-8') as f:
-                        roles = json.load(f)
+            # 重新渲染角色网格
+            self.refresh_role_grid()
 
-                # 更新角色
-                roles[role_name] = role_data
-
-                # 保存
-                with open(role_file, 'w', encoding='utf-8') as f:
-                    json.dump(roles, f, ensure_ascii=False, indent=2)
+            # 保存到项目文件
+            if hasattr(self, 'save_roles'):
+                self.save_roles()
 
             self.role_created.emit(role_name, role_data)
             show_info_dialog(self, "成功", f"角色 '{role_name}' 已保存")
@@ -914,12 +935,30 @@ class RoleManager(QWidget):
         )
 
         if reply == QMessageBox.Yes:
+            # 从 all_roles 中删除角色
+            if self.current_role in self.all_roles:
+                del self.all_roles[self.current_role]
+                # 保存更新后的角色列表
+                if hasattr(self, 'save_roles'):
+                    self.save_roles()
+
             self.role_deleted.emit(self.current_role)
+
+            # 重新渲染角色网格
+            self.refresh_role_grid()
+
+            # 清空编辑器
             self.clear_editor()
+
+            # 更新统计信息
+            self.update_statistics()
+
             show_info_dialog(self, "成功", f"角色 '{self.current_role}' 已删除")
 
     def clear_editor(self):
         """清空编辑器"""
+        self.current_role = ""  # 重置当前角色
+
         self.role_name.clear()
         self.role_type.setCurrentIndex(0)
         self.role_gender.setCurrentIndex(0)

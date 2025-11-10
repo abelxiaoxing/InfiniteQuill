@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 import os
 import json
+from typing import Optional
 
 def read_file(filename: str) -> str:
     """读取文件的全部内容，若文件不存在或异常则返回空字符串。"""
@@ -51,3 +52,19 @@ def save_data_to_json(data: dict, file_path: str) -> bool:
     except Exception as e:
         print(f"[save_data_to_json] 保存数据到JSON文件时出错: {e}")
         return False
+
+def load_data_from_json(file_path: str) -> Optional[dict]:
+    """从 JSON 文件加载数据。"""
+    try:
+        with open(file_path, 'r', encoding='utf-8') as json_file:
+            data = json.load(json_file)
+        return data
+    except FileNotFoundError:
+        print(f"[load_data_from_json] 文件不存在: {file_path}")
+        return None
+    except json.JSONDecodeError as e:
+        print(f"[load_data_from_json] JSON 格式错误: {e}")
+        return None
+    except Exception as e:
+        print(f"[load_data_from_json] 加载数据时发生错误: {e}")
+        return None

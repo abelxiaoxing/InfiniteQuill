@@ -232,24 +232,6 @@ class ConfigWidget(QWidget):
 
         layout.addWidget(selection_group)
 
-        # 建议说明组
-        suggestion_group = QGroupBox("模型选择建议")
-        suggestion_layout = QVBoxLayout(suggestion_group)
-
-        suggestion_text = QTextEdit()
-        suggestion_text.setReadOnly(True)
-        suggestion_text.setMaximumHeight(120)
-        suggestion_text.setPlainText("""💡 模型选择建议：
-
-• 架构生成：推荐使用Gemini 2.5 Pro（创意性强，适合世界构建）
-• 章节大纲：推荐使用DeepSeek V3（逻辑性强，适合结构规划）
-• 章节内容：推荐使用GPT 5（综合能力强，适合内容创作）
-• 一致性检查：推荐使用DeepSeek V3（逻辑分析能力强）
-• 提示词草稿：推荐使用DeepSeek V3（指令理解能力强）""")
-        suggestion_layout.addWidget(suggestion_text)
-
-        layout.addWidget(suggestion_group)
-
         layout.addStretch()
 
         self.tab_widget.addTab(selection_widget, "模型选择")
