@@ -21,6 +21,7 @@ from ..utils.ui_helpers import (
     create_separator, set_font_size, show_info_dialog,
     show_error_dialog, create_label_with_help
 )
+from ..utils.theme_manager import ThemeManager
 from novel_generator.data_manager import DataManager
 
 
@@ -32,9 +33,10 @@ class ChapterEditor(QWidget):
     content_changed = Signal(int, str)
     chapter_saved = Signal(int)
 
-    def __init__(self, config: Dict[str, Any], parent=None):
+    def __init__(self, config: Dict[str, Any], theme_manager: ThemeManager = None, parent=None):
         super().__init__(parent)
         self.config = config.copy()
+        self.theme_manager = theme_manager
         self.current_chapter = 1
         self.current_project_path = ""
         self.is_modified = False
@@ -42,6 +44,64 @@ class ChapterEditor(QWidget):
         self.setup_ui()
         self.setup_editor_actions()
         self.setup_context_menus()
+
+        # 应用主题样式
+        if self.theme_manager:
+            self.update_theme_styles()
+
+    def get_theme_color(self, color_type: str) -> str:
+        """获取主题对应的颜色值"""
+        if self.theme_manager:
+            return self.theme_manager.get_color(self.theme_manager.get_current_theme(), color_type)
+        # 默认浅色主题颜色
+        from ..utils.theme_manager import ThemeManager
+        default_manager = ThemeManager()
+        return default_manager.get_color("light", color_type)
+
+    def update_theme_styles(self):
+        """更新所有组件的主题样式"""
+        # 更新信息栏背景和文字颜色
+        if hasattr(self, 'info_bar'):
+            light_bg = self.get_theme_color("light_bg")
+            info_text = self.get_theme_color("info_text")
+            self.info_bar.setStyleSheet(f"background-color: {light_bg}; padding: 5px; border-radius: 3px;")
+            # 更新信息栏QLabel的文字颜色
+            for child in self.info_bar.findChildren(QLabel):
+                child.setStyleSheet(f"color: {info_text};")
+
+        # 更新工具栏背景
+        if hasattr(self, 'toolbar_group'):
+            light_bg = self.get_theme_color("light_bg")
+            self.toolbar_group.setStyleSheet(f"background-color: {light_bg}; padding: 5px; border-radius: 3px;")
+
+        # 更新状态栏背景和文字颜色
+        if hasattr(self, 'status_frame'):
+            light_bg = self.get_theme_color("light_bg")
+            info_text = self.get_theme_color("info_text")
+            self.status_frame.setStyleSheet(f"background-color: {light_bg}; padding: 5px; border-radius: 3px;")
+            # 更新状态栏标签的文字颜色
+            for label_name in ['cursor_position_label', 'selection_info_label', 'auto_save_label']:
+                if hasattr(self, label_name):
+                    label = getattr(self, label_name)
+                    label.setStyleSheet(f"color: {info_text};")
+
+        # 更新保存按钮样式（保持primary色）
+        if hasattr(self, 'save_btn'):
+            primary = self.get_theme_color("primary")
+            primary_text = self.get_theme_color("primary_text")
+            self.save_btn.setStyleSheet(f"font-weight: bold; background-color: {primary}; color: {primary_text};")
+
+        # 更新项目概览保存按钮
+        if hasattr(self, 'save_summary_btn'):
+            primary = self.get_theme_color("primary")
+            primary_text = self.get_theme_color("primary_text")
+            self.save_summary_btn.setStyleSheet(f"font-weight: bold; background-color: {primary}; color: {primary_text};")
+
+        # 更新概览字数标签颜色
+        if hasattr(self, 'summary_word_count'):
+            secondary = self.get_theme_color("secondary")
+            self.summary_word_count.setStyleSheet(f"font-weight: bold; color: {secondary};")
+
 
     def setup_ui(self):
         """设置UI布局"""
@@ -210,8 +270,11 @@ class ChapterEditor(QWidget):
 
         # 章节信息栏
         info_bar = QFrame()
-        info_bar.setStyleSheet("background-color: #f8f9fa; padding: 5px; border-radius: 3px;")
+        # 背景色将在update_theme_styles中设置
         info_layout = QHBoxLayout(info_bar)
+
+        # 保存引用以便后续更新主题
+        self.info_bar = info_bar
 
         self.chapter_title_edit = QLineEdit()
         self.chapter_title_edit.setPlaceholderText("输入章节标题...")
@@ -221,8 +284,8 @@ class ChapterEditor(QWidget):
         self.word_count_label = QLabel("0")
         info_layout.addWidget(self.word_count_label)
 
-        self.status_label = QLabel(" 编辑中")
-        self.status_label.setStyleSheet("padding: 2px 8px; background-color: #fff3cd; color: #856404; border-radius: 3px;")
+        self.status_label = QLabel(" 未选择")
+        # 样式将在update_status_style中动态设置
         info_layout.addWidget(self.status_label)
 
         layout.addWidget(info_bar)
@@ -349,7 +412,7 @@ class ChapterEditor(QWidget):
 
         self.save_summary_btn = QPushButton(" 保存修改")
         self.save_summary_btn.clicked.connect(self.save_global_summary)
-        self.save_summary_btn.setStyleSheet("font-weight: bold; background-color: #4caf50; color: white;")
+        # 样式将在update_theme_styles中动态设置
         btn_layout.addWidget(self.save_summary_btn)
 
         btn_layout.addStretch()
@@ -359,7 +422,7 @@ class ChapterEditor(QWidget):
         stats_layout = QHBoxLayout()
         stats_layout.addWidget(QLabel("字数:"))
         self.summary_word_count = QLabel("0")
-        self.summary_word_count.setStyleSheet("font-weight: bold; color: #2196F3;")
+        # 样式将在update_theme_styles中动态设置
         stats_layout.addWidget(self.summary_word_count)
         stats_layout.addStretch()
         project_layout.addLayout(stats_layout)
@@ -394,19 +457,22 @@ class ChapterEditor(QWidget):
     def create_toolbar(self, layout: QVBoxLayout):
         """创建工具栏"""
         toolbar_group = QFrame()
-        toolbar_group.setStyleSheet("background-color: #f8f9fa; padding: 5px; border-radius: 3px;")
+        # 背景色将在update_theme_styles中设置
         toolbar_layout = QHBoxLayout(toolbar_group)
 
+        # 保存引用以便后续更新主题
+        self.toolbar_group = toolbar_group
+
         # 格式化按钮
-        self.bold_btn = QPushButton("B")
+        self.bold_btn = QPushButton("粗体")
         self.bold_btn.clicked.connect(lambda: self.apply_format("bold"))
         toolbar_layout.addWidget(self.bold_btn)
 
-        self.italic_btn = QPushButton("I")
+        self.italic_btn = QPushButton("斜体")
         self.italic_btn.clicked.connect(lambda: self.apply_format("italic"))
         toolbar_layout.addWidget(self.italic_btn)
 
-        self.underline_btn = QPushButton("U")
+        self.underline_btn = QPushButton("下划线")
         self.underline_btn.clicked.connect(lambda: self.apply_format("underline"))
         toolbar_layout.addWidget(self.underline_btn)
 
@@ -414,15 +480,15 @@ class ChapterEditor(QWidget):
         toolbar_layout.addWidget(create_separator("vertical"))
 
         # 对齐按钮
-        self.align_left_btn = QPushButton("⬅")
+        self.align_left_btn = QPushButton("左对齐")
         self.align_left_btn.clicked.connect(lambda: self.apply_alignment("left"))
         toolbar_layout.addWidget(self.align_left_btn)
 
-        self.align_center_btn = QPushButton("⬌")
+        self.align_center_btn = QPushButton("居中")
         self.align_center_btn.clicked.connect(lambda: self.apply_alignment("center"))
         toolbar_layout.addWidget(self.align_center_btn)
 
-        self.align_right_btn = QPushButton("➡")
+        self.align_right_btn = QPushButton("右对齐")
         self.align_right_btn.clicked.connect(lambda: self.apply_alignment("right"))
         toolbar_layout.addWidget(self.align_right_btn)
 
@@ -445,7 +511,7 @@ class ChapterEditor(QWidget):
         # 保存按钮
         self.save_btn = QPushButton(" 保存章节")
         self.save_btn.clicked.connect(self.save_current_chapter)
-        self.save_btn.setStyleSheet("font-weight: bold; background-color: #4caf50; color: white;")
+        # 样式将在update_theme_styles中动态设置
         toolbar_layout.addWidget(self.save_btn)
 
         layout.addWidget(toolbar_group)
@@ -453,8 +519,11 @@ class ChapterEditor(QWidget):
     def create_status_bar(self, layout: QVBoxLayout):
         """创建状态栏"""
         status_frame = QFrame()
-        status_frame.setStyleSheet("background-color: #f8f9fa; padding: 5px; border-radius: 3px;")
+        # 背景色将在update_theme_styles中设置
         status_layout = QHBoxLayout(status_frame)
+
+        # 保存引用以便后续更新主题
+        self.status_frame = status_frame
 
         self.cursor_position_label = QLabel("行 1, 列 1")
         status_layout.addWidget(self.cursor_position_label)
@@ -527,7 +596,7 @@ class ChapterEditor(QWidget):
         self.update_word_count()
         self.update_statistics()
         self.status_label.setText(" 编辑中")
-        self.status_label.setStyleSheet("padding: 2px 8px; background-color: #fff3cd; color: #856404; border-radius: 3px;")
+        self.update_status_style("warning")
         self.content_changed.emit(self.current_chapter, self.chapter_editor.toPlainText())
 
     def update_word_count(self):
@@ -600,7 +669,7 @@ class ChapterEditor(QWidget):
 
             # 更新状态栏
             self.status_label.setText(" 已保存")
-            self.status_label.setStyleSheet("padding: 2px 8px; background-color: #d4edda; color: #155724; border-radius: 3px;")
+            self.update_status_style("success")
 
             # 更新统计信息
             self.update_statistics()
@@ -648,7 +717,7 @@ class ChapterEditor(QWidget):
                 # 更新状态
                 self.is_modified = False
                 self.status_label.setText(" 已保存")
-                self.status_label.setStyleSheet("padding: 2px 8px; background-color: #d4edda; color: #155724; border-radius: 3px;")
+                self.update_status_style("success")
 
                 # 刷新章节列表中的标题
                 self.refresh_chapter_list()
@@ -751,7 +820,7 @@ class ChapterEditor(QWidget):
                     self.chapter_title_edit.clear()
                     self.is_modified = False
                     self.status_label.setText(" 未选择章节")
-                    self.status_label.setStyleSheet("padding: 2px 8px; background-color: #f8f9fa; color: #666; border-radius: 3px;")
+                    self.update_status_style("default")
 
                 show_info_dialog(self, "成功", f"第{self.current_chapter}章已删除")
 

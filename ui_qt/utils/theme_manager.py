@@ -774,3 +774,48 @@ class ThemeManager(QObject):
     def get_current_theme(self) -> str:
         """获取当前主题"""
         return self.current_theme
+
+    def get_color(self, theme_name: str, color_type: str) -> str:
+        """获取主题对应的颜色值
+
+        Args:
+            theme_name: 主题名称 ('light' 或 'dark')
+            color_type: 颜色类型 ('light_bg', 'dark_bg', 'light_frame', 'warning_bg',
+                           'success_bg', 'info_text', 'warning_text', 'success_text', 'primary')
+
+        Returns:
+            十六进制颜色值
+        """
+        colors = {
+            "light": {
+                "light_bg": "#f8f9fa",
+                "medium_bg": "#e9ecef",
+                "dark_bg": "#dee2e6",
+                "light_frame": "#ffffff",
+                "warning_bg": "#fff3cd",
+                "warning_text": "#856404",
+                "success_bg": "#d4edda",
+                "success_text": "#155724",
+                "info_text": "#666666",
+                "primary": "#4caf50",
+                "primary_text": "white",
+                "secondary": "#2196F3",
+            },
+            "dark": {
+                "light_bg": "#2d2d2d",
+                "medium_bg": "#3d3d3d",
+                "dark_bg": "#4a4a4a",
+                "light_frame": "#3d3d3d",
+                "warning_bg": "#ffa726",
+                "warning_text": "#000000",
+                "success_bg": "#66bb6a",
+                "success_text": "#000000",
+                "info_text": "#cccccc",
+                "primary": "#43a047",
+                "primary_text": "white",
+                "secondary": "#1e88e5",
+            }
+        }
+
+        theme_colors = colors.get(theme_name, colors["light"])
+        return theme_colors.get(color_type, colors["light"][color_type])

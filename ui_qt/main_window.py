@@ -126,7 +126,7 @@ class MainWindow(QMainWindow):
         self.tab_widget.addTab(self.config_widget, " 配置管理")
 
         # 章节编辑标签页
-        self.chapter_editor = ChapterEditor(self.config, self)
+        self.chapter_editor = ChapterEditor(self.config, self.theme_manager, self)
         self.tab_widget.addTab(self.chapter_editor, " 章节编辑")
 
         # 角色管理标签页
@@ -224,6 +224,8 @@ class MainWindow(QMainWindow):
         """应用主题"""
         theme_name = self.config.get("theme", "light")
         self.theme_manager.apply_theme(self, theme_name)
+        # 更新各个组件的主题
+        self.update_component_themes(theme_name)
 
     def update_component_themes(self, theme_name: str):
         """更新组件主题以适配深浅色切换"""
@@ -372,30 +374,32 @@ class MainWindow(QMainWindow):
 
         try:
             widget = self.chapter_editor
-            if theme_name == "dark":
-                # 深色主题
-                if hasattr(widget, 'title_label'):
-                    widget.title_label.setStyleSheet("""
-                        padding: 10px;
-                        border-radius: 6px;
-                        margin-bottom: 10px;
-                        background-color: #1565c0;
-                        color: #ffffff;
-                        font-weight: bold;
-                        font-size: 14pt;
-                    """)
+            # 调用章节编辑器的主题更新方法
+            if hasattr(widget, 'update_theme_styles'):
+                widget.update_theme_styles()
             else:
-                # 浅色主题
+                # 备用方案：手动更新title_label
                 if hasattr(widget, 'title_label'):
-                    widget.title_label.setStyleSheet("""
-                        padding: 10px;
-                        border-radius: 6px;
-                        margin-bottom: 10px;
-                        background-color: #e3f2fd;
-                        color: #333333;
-                        font-weight: bold;
-                        font-size: 14pt;
-                    """)
+                    if theme_name == "dark":
+                        widget.title_label.setStyleSheet("""
+                            padding: 10px;
+                            border-radius: 6px;
+                            margin-bottom: 10px;
+                            background-color: #1565c0;
+                            color: #ffffff;
+                            font-weight: bold;
+                            font-size: 14pt;
+                        """)
+                    else:
+                        widget.title_label.setStyleSheet("""
+                            padding: 10px;
+                            border-radius: 6px;
+                            margin-bottom: 10px;
+                            background-color: #e3f2fd;
+                            color: #333333;
+                            font-weight: bold;
+                            font-size: 14pt;
+                        """)
         except Exception as e:
             self.logger.error(f"更新章节编辑器主题失败: {str(e)}")
 
