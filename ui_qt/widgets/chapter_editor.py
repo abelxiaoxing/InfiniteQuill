@@ -90,11 +90,11 @@ class ChapterEditor(QWidget):
 
         # 导航按钮
         nav_btn_layout = QHBoxLayout()
-        self.prev_chapter_btn = QPushButton("⬅️ 上一章")
+        self.prev_chapter_btn = QPushButton("上一章")
         self.prev_chapter_btn.clicked.connect(self.prev_chapter)
         nav_btn_layout.addWidget(self.prev_chapter_btn)
 
-        self.next_chapter_btn = QPushButton("下一章 ➡️")
+        self.next_chapter_btn = QPushButton("下一章")
         self.next_chapter_btn.clicked.connect(self.next_chapter)
         nav_btn_layout.addWidget(self.next_chapter_btn)
         nav_layout.addLayout(nav_btn_layout)
@@ -158,7 +158,7 @@ class ChapterEditor(QWidget):
         action_group = QGroupBox(" 快捷操作")
         action_layout = QVBoxLayout(action_group)
 
-        self.add_chapter_btn = QPushButton("➕ 新增章节")
+        self.add_chapter_btn = QPushButton("[+] 新增章节")
         self.add_chapter_btn.clicked.connect(self.add_chapter)
         action_layout.addWidget(self.add_chapter_btn)
 
@@ -301,7 +301,7 @@ class ChapterEditor(QWidget):
         layout.addWidget(content_group)
 
         # 标签和分类
-        tags_group = QGroupBox("🏷️ 标签和分类")
+        tags_group = QGroupBox("标签和分类")
         tags_layout = QVBoxLayout(tags_group)
 
         self.chapter_tags = QLineEdit()
@@ -373,7 +373,7 @@ class ChapterEditor(QWidget):
         layout.addWidget(project_group)
 
         # 快捷操作
-        quick_group = QGroupBox("⚡ 快捷操作")
+        quick_group = QGroupBox("快捷操作")
         quick_layout = QVBoxLayout(quick_group)
         quick_layout.setSpacing(5)
 
@@ -389,7 +389,7 @@ class ChapterEditor(QWidget):
         quick_layout.addStretch()
         layout.addWidget(quick_group)
 
-        self.editor_tabs.addTab(overview_widget, "📖 概览")
+        self.editor_tabs.addTab(overview_widget, "概览")
 
     def create_toolbar(self, layout: QVBoxLayout):
         """创建工具栏"""

@@ -16,12 +16,13 @@ from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QFont
 
 
-def create_separator(orientation: str = "horizontal", width: int = 1) -> QFrame:
+def create_separator(orientation: str = "horizontal", width: int = 1, theme_aware: bool = True) -> QFrame:
     """创建分隔线
 
     Args:
         orientation: 方向 ("horizontal" 或 "vertical")
         width: 线宽
+        theme_aware: 是否感知主题（自动适配暗色/浅色模式）
 
     Returns:
         QFrame: 分隔线控件
@@ -35,7 +36,20 @@ def create_separator(orientation: str = "horizontal", width: int = 1) -> QFrame:
         separator.setMaximumWidth(width)
 
     separator.setFrameShadow(QFrame.Sunken)
-    separator.setStyleSheet("background-color: #c0c0c0;")
+
+    if theme_aware:
+        # 使用主题感知的颜色 - 通过QSS变量实现
+        separator.setObjectName("ThemeAwareSeparator")
+        separator.setStyleSheet("""
+            QFrame#ThemeAwareSeparator {
+                background-color: #c0c0c0;
+            }
+            QFrame#ThemeAwareSeparator[theme="dark"] {
+                background-color: #555555;
+            }
+        """)
+    else:
+        separator.setStyleSheet("background-color: #c0c0c0;")
 
     return separator
 
@@ -355,7 +369,7 @@ def create_progress_bar_with_label(parent: QWidget, label_text: str) -> Tuple[QL
     return label, progress_bar
 
 
-def create_info_panel(parent: QWidget, title: str, content: str, icon: str = "ℹ️") -> QWidget:
+def create_info_panel(parent: QWidget, title: str, content: str, icon: str = "[信息]") -> QWidget:
     """创建信息面板
 
     Args:

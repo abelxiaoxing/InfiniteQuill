@@ -407,7 +407,7 @@ F5: 刷新预览              F11: 全屏模式""")
         layout.addWidget(network_group)
 
         # WebDAV设置
-        webdav_group = QGroupBox("☁️ WebDAV云同步")
+        webdav_group = QGroupBox("WebDAV云同步")
         webdav_layout = QFormLayout(webdav_group)
         webdav_layout.setSpacing(10)
 

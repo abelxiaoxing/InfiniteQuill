@@ -695,7 +695,7 @@ class ConfigWidget(QWidget):
 
         def perform_test():
             try:
-                # ✅ 预防性验证 - 在执行前就检查所有输入
+                # [成功] 预防性验证 - 在执行前就检查所有输入
                 api_key = self.api_key.text().strip()
                 base_url = self.base_url.text().strip()
                 model_name = self.model_name.currentText().strip()
@@ -720,13 +720,13 @@ class ConfigWidget(QWidget):
                 self.test_result.setStyleSheet("color: green; font-weight: bold;")
 
             except ValueError as e:
-                # ✅ 输入验证错误，直接显示友好提示
+                # [成功] 输入验证错误，直接显示友好提示
                 self.test_result.setText(" 配置无效")
                 self.test_result.setStyleSheet("color: orange; font-weight: bold;")
                 show_error_dialog(self, "配置验证失败", str(e))
 
             except Exception as e:
-                # ✅ 其他错误，显示详细错误信息
+                # [成功] 其他错误，显示详细错误信息
                 self.test_result.setText(" 连接失败")
                 self.test_result.setStyleSheet("color: red; font-weight: bold;")
                 show_error_dialog(self, "连接测试失败", f"发生错误: {str(e)}")
@@ -746,7 +746,7 @@ class ConfigWidget(QWidget):
 
         def perform_test():
             try:
-                # ✅ 预防性验证
+                # [成功] 预防性验证
                 api_key = self.embedding_api_key.text().strip()
                 model_name = self.embedding_model.currentText().strip()
                 base_url = self.embedding_url.text().strip()
@@ -771,13 +771,13 @@ class ConfigWidget(QWidget):
                 self.embedding_test_result.setStyleSheet("color: green; font-weight: bold;")
 
             except ValueError as e:
-                # ✅ 输入验证错误
+                # [成功] 输入验证错误
                 self.embedding_test_result.setText(" 配置无效")
                 self.embedding_test_result.setStyleSheet("color: orange; font-weight: bold;")
                 show_error_dialog(self, "配置验证失败", str(e))
 
             except Exception as e:
-                # ✅ 其他错误
+                # [成功] 其他错误
                 self.embedding_test_result.setText(" 连接失败")
                 self.embedding_test_result.setStyleSheet("color: red; font-weight: bold;")
                 show_error_dialog(self, "连接测试失败", f"发生错误: {str(e)}")

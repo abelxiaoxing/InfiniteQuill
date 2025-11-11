@@ -90,6 +90,7 @@ class ThemeManager(QObject):
             border-radius: 4px;
             padding: 6px 12px;
             min-width: 80px;
+            color: #333333;
         }
 
         QPushButton:hover {
@@ -357,6 +358,42 @@ class ThemeManager(QObject):
             padding: 4px 6px;
             font-size: 8pt;
         }
+
+        /* ================ 主题感知分隔线样式 ================ */
+        QFrame#ThemeAwareSeparator {
+            background-color: #c0c0c0;
+        }
+
+        /* ================ 角色操作组样式 ================ */
+        QFrame#RoleActionGroup {
+            background-color: #f8f9fa;
+            padding: 10px;
+            border-radius: 5px;
+        }
+
+        /* 角色操作按钮专用样式 - 浅色主题 */
+        QFrame#RoleActionGroup QPushButton {
+            background-color: #e3f2fd;
+            border: 1px solid #2196f3;
+            color: #333333;
+            padding: 6px 12px;
+            border-radius: 4px;
+            min-width: 80px;
+        }
+
+        QFrame#RoleActionGroup QPushButton:hover {
+            background-color: #bbdefb;
+        }
+
+        QFrame#RoleActionGroup QPushButton:pressed {
+            background-color: #90caf9;
+        }
+
+        QFrame#RoleActionGroup QPushButton:disabled {
+            background-color: #f5f5f5;
+            border-color: #cccccc;
+            color: #888888;
+        }
         """
 
     def get_dark_theme(self) -> str:
@@ -405,6 +442,7 @@ class ThemeManager(QObject):
             border-radius: 4px;
             padding: 6px 12px;
             min-width: 80px;
+            color: #ffffff;
         }
 
         QPushButton:hover {
@@ -680,6 +718,43 @@ class ThemeManager(QObject):
             padding: 4px 6px;
             font-size: 8pt;
             color: #ffffff;
+        }
+
+        /* ================ 主题感知分隔线样式 ================ */
+        QFrame#ThemeAwareSeparator {
+            background-color: #555555;
+        }
+
+        /* ================ 角色操作组样式 ================ */
+        QFrame#RoleActionGroup {
+            background-color: #2d2d2d;
+            padding: 10px;
+            border-radius: 5px;
+        }
+
+        /* 角色操作按钮专用样式 - 暗色主题 */
+        QFrame#RoleActionGroup QPushButton {
+            background-color: #3d3d3d;
+            border: 1px solid #555555;
+            color: #ffffff;
+            padding: 6px 12px;
+            border-radius: 4px;
+            min-width: 80px;
+        }
+
+        QFrame#RoleActionGroup QPushButton:hover {
+            background-color: #4a4a4a;
+            border-color: #2196f3;
+        }
+
+        QFrame#RoleActionGroup QPushButton:pressed {
+            background-color: #2a2a2a;
+        }
+
+        QFrame#RoleActionGroup QPushButton:disabled {
+            background-color: #424242;
+            border-color: #616161;
+            color: #888888;
         }
         """
 

@@ -97,7 +97,7 @@ class RoleManager(QWidget):
         self.ui_update_timer.timeout.connect(self._check_pending_role_data)
         self.ui_update_timer.start(500)  # 每500ms轮询一次
 
-        logger.info("✅ 定时器初始化完成 - 每500ms轮询一次")
+        logger.info("[成功] 定时器初始化完成 - 每500ms轮询一次")
 
     def setup_tooltips(self):
         """设置工具提示"""
@@ -157,7 +157,7 @@ class RoleManager(QWidget):
         layout.addWidget(search_group)
 
         # 角色分类树
-        category_group = QGroupBox("📂 角色分类")
+        category_group = QGroupBox("角色分类")
         category_layout = QVBoxLayout(category_group)
 
         self.category_tree = QTreeWidget()
@@ -352,7 +352,7 @@ class RoleManager(QWidget):
         layout = QVBoxLayout(abilities_widget)
 
         # 技能列表
-        skills_group = QGroupBox("💪 技能和能力")
+        skills_group = QGroupBox("技能和能力")
         skills_layout = QVBoxLayout(skills_group)
 
         self.abilities_list = QListWidget()
@@ -362,11 +362,11 @@ class RoleManager(QWidget):
         # 技能操作按钮
         skill_btn_layout = QHBoxLayout()
 
-        self.add_ability_btn = QPushButton("➕ 添加技能")
+        self.add_ability_btn = QPushButton("[+] 添加技能")
         self.add_ability_btn.clicked.connect(self.add_ability)
         skill_btn_layout.addWidget(self.add_ability_btn)
 
-        self.remove_ability_btn = QPushButton("➖ 移除技能")
+        self.remove_ability_btn = QPushButton("[-] 移除技能")
         self.remove_ability_btn.clicked.connect(self.remove_ability)
         skill_btn_layout.addWidget(self.remove_ability_btn)
 
@@ -405,7 +405,7 @@ class RoleManager(QWidget):
         layout = QVBoxLayout(background_widget)
 
         # 出身信息
-        origin_group = QGroupBox("🏠 出身背景")
+        origin_group = QGroupBox("出身背景")
         origin_layout = QFormLayout(origin_group)
 
         self.role_birthplace = QLineEdit()
@@ -423,7 +423,7 @@ class RoleManager(QWidget):
         layout.addWidget(origin_group)
 
         # 教育经历
-        education_group = QGroupBox("🎓 教育经历")
+        education_group = QGroupBox("教育经历")
         education_layout = QVBoxLayout(education_group)
 
         self.education_history = QTextEdit()
@@ -448,7 +448,7 @@ class RoleManager(QWidget):
         # 关系操作按钮
         relation_btn_layout = QHBoxLayout()
 
-        self.add_relation_btn = QPushButton("➕ 添加关系")
+        self.add_relation_btn = QPushButton("[+] 添加关系")
         self.add_relation_btn.clicked.connect(self.add_relationship)
         relation_btn_layout.addWidget(self.add_relation_btn)
 
@@ -467,7 +467,7 @@ class RoleManager(QWidget):
 
     def create_background_section(self, layout: QVBoxLayout):
         """创建背景故事区域"""
-        story_group = QGroupBox("📖 背景故事")
+        story_group = QGroupBox("背景故事")
         story_layout = QVBoxLayout(story_group)
 
         # 背景故事编辑器
@@ -485,22 +485,24 @@ class RoleManager(QWidget):
     def create_bottom_actions(self, layout: QVBoxLayout):
         """创建底部操作栏"""
         action_group = QFrame()
-        action_group.setStyleSheet("background-color: #f8f9fa; padding: 10px; border-radius: 5px;")
+        action_group.setObjectName("RoleActionGroup")
+        # 移除硬编码的样式，让主题管理器统一处理
+        # 暗色主题的样式已在 theme_manager.py 中统一定义
         action_layout = QHBoxLayout(action_group)
+        action_layout.setContentsMargins(10, 10, 10, 10)
+        action_layout.setSpacing(10)
 
         # 左侧操作
-        self.new_role_btn = QPushButton("➕ 新建角色")
+        self.new_role_btn = QPushButton("[+] 新建角色")
         self.new_role_btn.clicked.connect(self.create_new_role)
         action_layout.addWidget(self.new_role_btn)
 
         self.save_role_btn = QPushButton(" 保存角色")
         self.save_role_btn.clicked.connect(self.save_current_role)
-        self.save_role_btn.setStyleSheet("font-weight: bold; background-color: #4caf50; color: white;")
         action_layout.addWidget(self.save_role_btn)
 
         self.delete_role_btn = QPushButton(" 删除角色")
         self.delete_role_btn.clicked.connect(self.delete_current_role)
-        self.delete_role_btn.setStyleSheet("background-color: #f44336; color: white;")
         action_layout.addWidget(self.delete_role_btn)
 
         action_layout.addWidget(create_separator("vertical"))
@@ -532,9 +534,8 @@ class RoleManager(QWidget):
         action_layout.addStretch()
 
         # 右侧操作
-        self.generate_ai_btn = QPushButton("🤖 AI生成角色")
+        self.generate_ai_btn = QPushButton("[AI] 生成角色")
         self.generate_ai_btn.clicked.connect(self.generate_ai_role)
-        self.generate_ai_btn.setStyleSheet("background-color: #2196f3; color: white;")
         action_layout.addWidget(self.generate_ai_btn)
 
         layout.addWidget(action_group)
@@ -768,7 +769,7 @@ class RoleManager(QWidget):
         """保存当前角色 - 预防性编程"""
         role_data = self.get_role_data()
 
-        # ✅ 预防性验证 - 在保存前就检查所有必要数据
+        # [成功] 预防性验证 - 在保存前就检查所有必要数据
         try:
             role_name = role_data["name"]
             validate_required(role_name, "角色名称")
@@ -792,10 +793,10 @@ class RoleManager(QWidget):
             show_info_dialog(self, "成功", f"角色 '{role_name}' 已保存")
 
         except ValueError as e:
-            # ✅ 输入验证错误
+            # [成功] 输入验证错误
             show_error_dialog(self, "验证失败", str(e))
         except Exception as e:
-            # ✅ 文件操作或其他错误
+            # [成功] 文件操作或其他错误
             show_error_dialog(self, "保存失败", f"无法保存角色: {str(e)}")
 
     def delete_current_role(self):
@@ -1512,7 +1513,7 @@ class RoleManager(QWidget):
         from PySide6.QtCore import Qt
 
         dialog = QDialog(self)
-        dialog.setWindowTitle("🤖 AI角色生成器")
+        dialog.setWindowTitle("[AI] AI角色生成器")
         dialog.setModal(True)
         dialog.resize(600, 500)
 
@@ -1535,7 +1536,7 @@ class RoleManager(QWidget):
 
         # 提示信息
         from PySide6.QtWidgets import QLabel
-        tip_label = QLabel("💡 提示：角色描述越详细，生成的角色越精准。建议包含角色的职业、性格、目标等信息。")
+        tip_label = QLabel("提示：角色描述越详细，生成的角色越精准。建议包含角色的职业、性格、目标等信息。")
         tip_label.setStyleSheet("color: #666; font-style: italic; padding: 10px;")
         layout.addWidget(tip_label)
 
@@ -1714,9 +1715,9 @@ class RoleManager(QWidget):
                                     'dialog': dialog
                                 }
 
-                            # ✅ 角色数据已安全存储，主线程定时器将自动轮询
-                            logger.info("✅ 角色数据已安全存储到pending_role_data")
-                            logger.info("✅ 主线程的轮询定时器将自动检测并处理")
+                            # [成功] 角色数据已安全存储，主线程定时器将自动轮询
+                            logger.info("[成功] 角色数据已安全存储到pending_role_data")
+                            logger.info("[成功] 主线程的轮询定时器将自动检测并处理")
 
                         except json.JSONDecodeError as e:
                             progress.close()
@@ -1856,7 +1857,7 @@ class RoleManager(QWidget):
                 if app and hasattr(app, 'main_window') and hasattr(app.main_window, 'statusBar'):
                     status_bar = app.main_window.statusBar()
                     role_name = role_data.get('name', '未知')
-                    status_bar.showMessage(f"✅ 角色 '{role_name}' 生成成功！", 5000)
+                    status_bar.showMessage(f"[成功] 角色 '{role_name}' 生成成功！", 5000)
                     logger.info(f"[定时器] 状态栏提示已显示: 角色 '{role_name}' 生成成功")
                 else:
                     logger.warning("[定时器] 无法访问状态栏")
@@ -1906,7 +1907,7 @@ class RoleManager(QWidget):
             logger.info("生成对话框已关闭")
 
             # 使用非阻塞的提示
-            show_info_dialog(self, "✅ 成功", f"角色 '{role_data.get('name', '未知')}' 已生成！\n请查看右侧编辑器中的详细信息。")
+            show_info_dialog(self, "[成功] 成功", f"角色 '{role_data.get('name', '未知')}' 已生成！\n请查看右侧编辑器中的详细信息。")
             logger.info("角色生成完成！")
 
         except Exception as e:

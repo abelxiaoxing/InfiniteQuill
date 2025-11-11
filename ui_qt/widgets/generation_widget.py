@@ -536,7 +536,7 @@ class GenerationWidget(QWidget):
         layout.setSpacing(15)
 
         # 基本设定组
-        basic_group = QGroupBox("📖 基本设定")
+        basic_group = QGroupBox("基本设定")
         basic_layout = QFormLayout(basic_group)
 
         # 小说标题
