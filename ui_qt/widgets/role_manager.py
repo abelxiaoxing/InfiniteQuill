@@ -192,57 +192,32 @@ class RoleManager(QWidget):
         list_group = QGroupBox(" 角色列表")
         list_layout = QVBoxLayout(list_group)
 
-        # 列表视图切换
-        view_switch = QHBoxLayout()
-        self.grid_view_btn = QPushButton("网格")
-        self.grid_view_btn.setCheckable(True)
-        self.grid_view_btn.setChecked(True)
-        self.grid_view_btn.setToolTip("网格视图")
-        self.grid_view_btn.clicked.connect(lambda: self.switch_view("grid"))
-        view_switch.addWidget(self.grid_view_btn)
-
-        self.list_view_btn = QPushButton("列表")
-        self.list_view_btn.setCheckable(True)
-        self.list_view_btn.setToolTip("列表视图")
-        self.list_view_btn.clicked.connect(lambda: self.switch_view("list"))
-        view_switch.addWidget(self.list_view_btn)
-
-        view_switch.addStretch()
-        list_layout.addLayout(view_switch)
-
-        # 角色网格视图
-        self.role_grid = QWidget()
-        self.role_grid_layout = QGridLayout(self.role_grid)
-        self.role_grid_layout.setSpacing(10)
-
-        scroll_area = QScrollArea()
-        scroll_area.setWidget(self.role_grid)
-        scroll_area.setWidgetResizable(True)
-        scroll_area.setStyleSheet("QScrollArea { border: none; }")
-        list_layout.addWidget(scroll_area)
-
-        # 角色列表视图（默认隐藏）
+        # 角色列表视图（显示详细信息）
         self.role_list = QListWidget()
+        self.role_list.setSelectionMode(QListWidget.SingleSelection)
         self.role_list.itemClicked.connect(self.on_role_item_clicked)
-        self.role_list.hide()
+        self.role_list.setStyleSheet("""
+            QListWidget {
+                border: none;
+                background-color: transparent;
+                outline: none;
+            }
+            QListWidget::item {
+                padding: 12px;
+                border-bottom: 1px solid #e0e0e0;
+                margin: 0px;
+            }
+            QListWidget::item:hover {
+                background-color: #f5f5f5;
+            }
+            QListWidget::item:selected {
+                background-color: #e3f2fd;
+                border-left: 4px solid #1976d2;
+            }
+        """)
         list_layout.addWidget(self.role_list)
 
         layout.addWidget(list_group)
-
-        # 快速统计
-        stats_group = QGroupBox("📊 快速统计")
-        stats_layout = QFormLayout(stats_group)
-
-        self.total_roles_label = QLabel("0")
-        stats_layout.addRow("总角色数:", self.total_roles_label)
-
-        self.main_roles_label = QLabel("0")
-        stats_layout.addRow("主要角色:", self.main_roles_label)
-
-        self.minor_roles_label = QLabel("0")
-        stats_layout.addRow("次要角色:", self.minor_roles_label)
-
-        layout.addWidget(stats_group)
 
         return widget
 
@@ -612,9 +587,6 @@ class RoleManager(QWidget):
         for role in sample_roles:
             self.add_role(role["name"], role["category"], role)
 
-        # 更新统计
-        self.update_statistics()
-
     def add_role(self, name: str, category: str, role_data: Dict[str, Any] = None):
         """添加角色到存储和UI"""
         if role_data is None:
@@ -623,138 +595,17 @@ class RoleManager(QWidget):
         # 存储到角色列表
         self.all_roles[name] = role_data
 
-        # 添加到UI
-        self.add_role_to_grid(name, category)
-
-    def add_role_to_grid(self, name: str, category: str):
-        """添加角色到网格视图"""
-        # 创建角色卡片
-        role_card = self.create_role_card(name, category)
-
-        # 计算网格位置
-        count = self.role_grid_layout.count()
-        row = count // 2
-        col = count % 2
-
-        self.role_grid_layout.addWidget(role_card, row, col)
-
-    def create_role_card(self, name: str, category: str) -> QWidget:
-        """创建角色卡片"""
-        card = QFrame()
-        card.setStyleSheet("""
-            QFrame {
-                border: 2px solid #e0e0e0;
-                border-radius: 8px;
-                background-color: white;
-                padding: 10px;
-            }
-            QFrame:hover {
-                border-color: #2196f3;
-                background-color: #f8f9fa;
-            }
-        """)
-        card.setMinimumSize(150, 120)
-        card.setMaximumSize(150, 120)
-
-        layout = QVBoxLayout(card)
-        layout.setSpacing(5)
-
-        # 头像占位符
-        avatar = QLabel("👤")
-        avatar.setAlignment(Qt.AlignCenter)
-        avatar.setStyleSheet("font-size: 24pt;")
-        layout.addWidget(avatar)
-
-        # 角色名称
-        name_label = QLabel(name)
-        name_label.setAlignment(Qt.AlignCenter)
-        name_label.setStyleSheet("font-weight: bold; font-size: 10pt;")
-        layout.addWidget(name_label)
-
-        # 角色类别
-        category_label = QLabel(category)
-        category_label.setAlignment(Qt.AlignCenter)
-        category_label.setStyleSheet("color: #666; font-size: 9pt;")
-        layout.addWidget(category_label)
-
-        # 点击事件
-        card.mousePressEvent = lambda event: self.on_role_card_clicked(name, card)
-
-        return card
-
-    def on_role_card_clicked(self, name: str, card: QFrame):
-        """角色卡片点击处理"""
-        # 高亮选中的卡片
-        for i in range(self.role_grid_layout.count()):
-            widget = self.role_grid_layout.itemAt(i).widget()
-            if isinstance(widget, QFrame):
-                widget.setStyleSheet("""
-                    QFrame {
-                        border: 2px solid #e0e0e0;
-                        border-radius: 8px;
-                        background-color: white;
-                        padding: 10px;
-                    }
-                """)
-
-        card.setStyleSheet("""
-            QFrame {
-                border: 2px solid #2196f3;
-                border-radius: 8px;
-                background-color: #e3f2fd;
-                padding: 10px;
-            }
-        """)
-
-        # 加载角色详情
-        self.load_role_details(name)
-        self.current_role = name
-        self.role_selected.emit(name)
-
-    def load_role_details(self, name: str):
-        """加载角色详情"""
-        # 这里实现从数据源加载角色详情的逻辑
-        # 暂时使用模拟数据
-        self.role_name.setText(name)
-        self.role_type.setCurrentText("主角")
-        self.role_gender.setCurrentText("男")
-        self.role_age.setValue(25)
-        self.role_appearance.setPlainText("中等身材，黑色短发，眼神锐利...")
-        self.background_story.setPlainText("出生于普通家庭，从小就展现出非凡的能力...")
-
-    def on_category_selected(self, item: QTreeWidgetItem, column: int):
-        """分类选择处理"""
-        category_name = item.text(0)
-        self.filter_by_category(category_name)
-
-    def on_role_item_clicked(self, item: QListWidgetItem):
-        """列表项点击处理"""
-        role_name = item.text()
-        self.load_role_details(role_name)
-        self.current_role = role_name
-        self.role_selected.emit(role_name)
+        # 检查是否符合当前过滤条件
+        if self._role_matches_filter(role_data):
+            item = self.create_role_list_item(name, role_data)
+            self.role_list.addItem(item)
 
     def filter_roles(self, text: str):
-        """过滤角色
-
-        Args:
-            text: 搜索文本，支持角色名、描述、属性等多字段搜索
-        """
+        """过滤角色（仅支持列表视图）"""
         self.current_filter = text.strip().lower()
 
-        # 清除当前网格中的所有角色
-        self.clear_role_grid()
-
-        # 根据过滤条件显示角色
-        filtered_count = 0
-        for role_name, role_data in self.all_roles.items():
-            if self._role_matches_filter(role_data):
-                category = role_data.get("category", "未分类")
-                self.add_role_to_grid(role_name, category)
-                filtered_count += 1
-
-        # 更新统计信息
-        self.update_statistics(filtered_count)
+        # 刷新列表视图
+        self.refresh_role_list()
 
     def _role_matches_filter(self, role_data: Dict[str, Any]) -> bool:
         """检查角色是否匹配当前过滤条件"""
@@ -798,45 +649,92 @@ class RoleManager(QWidget):
         self.filter_roles(search_text)
 
     def filter_by_category(self, category: str):
-        """按分类过滤
-
-        Args:
-            category: 分类名称，传入"全部"显示所有角色
-        """
+        """按分类过滤"""
         self.current_category = category
 
         # 重新应用过滤
         self.filter_roles(self.current_filter)
 
-    def clear_role_grid(self):
-        """清除角色网格中的所有角色卡片"""
-        while self.role_grid_layout.count():
-            child = self.role_grid_layout.takeAt(0)
-            if child.widget():
-                child.widget().deleteLater()
+    def on_category_selected(self, item, column):
+        """分类选择处理"""
+        category_name = item.text(0)
+        self.filter_by_category(category_name)
 
-    def refresh_role_grid(self):
-        """重新渲染角色网格"""
-        # 清除当前网格
-        self.clear_role_grid()
+    def on_role_item_clicked(self, item):
+        """列表项点击处理"""
+        role_name = item.data(Qt.UserRole)
+        if not role_name:
+            role_name = item.text()
 
-        # 重新添加所有角色
+        self.load_role_details(role_name)
+        self.current_role = role_name
+        self.role_selected.emit(role_name)
+
+    def load_role_details(self, name: str):
+        """加载角色详情"""
+        self.role_name.setText(name)
+        self.role_type.setCurrentText("主角")
+        self.role_gender.setCurrentText("男")
+        self.role_age.setValue(25)
+        self.role_appearance.setPlainText("中等身材，黑色短发，眼神锐利...")
+        self.background_story.setPlainText("出生于普通家庭，从小就展现出非凡的能力...")
+
+    def create_new_role(self):
+        """创建新角色"""
+        self.current_role = ""
+        self._safe_clear_editor()
+
+    def _safe_clear_editor(self):
+        """安全清空编辑器"""
+        self.role_name.blockSignals(True)
+        self.role_appearance.blockSignals(True)
+        self.personality_description.blockSignals(True)
+        self.background_story.blockSignals(True)
+
+        self.role_name.clear()
+        self.role_type.setCurrentIndex(0)
+        self.role_gender.setCurrentIndex(0)
+        self.role_age.setValue(20)
+        self.role_appearance.clear()
+        self.personality_description.clear()
+        self.background_story.clear()
+
+        for checkbox in self.personality_checkboxes.values():
+            checkbox.setChecked(False)
+
+        self.role_name.blockSignals(False)
+        self.role_appearance.blockSignals(False)
+        self.personality_description.blockSignals(False)
+        self.background_story.blockSignals(False)
+
+        self.current_role = ""
+
+    def clear_role_list(self):
+        """清除角色列表中的所有角色项"""
+        self.role_list.clear()
+
+    def refresh_role_list(self):
+        """刷新角色列表视图"""
+        self.clear_role_list()
+
+        # 添加符合当前过滤条件的角色到列表
         for role_name, role_data in self.all_roles.items():
-            category = role_data.get("category", "未分类")
-            self.add_role_to_grid(role_name, category)
+            if self._role_matches_filter(role_data):
+                item = self.create_role_list_item(role_name, role_data)
+                self.role_list.addItem(item)
 
-    def switch_view(self, view_type: str):
-        """切换视图"""
-        if view_type == "grid":
-            self.role_grid.show()
-            self.role_list.hide()
-            self.grid_view_btn.setChecked(True)
-            self.list_view_btn.setChecked(False)
-        else:
-            self.role_grid.hide()
-            self.role_list.show()
-            self.grid_view_btn.setChecked(False)
-            self.list_view_btn.setChecked(True)
+    def create_role_list_item(self, name: str, role_data: Dict[str, Any]) -> QListWidgetItem:
+        """创建角色列表项"""
+        item = QListWidgetItem()
+        item.setText(name)
+        item.setData(Qt.UserRole, name)
+        item.setSizeHint(self.role_list_item_size())
+        return item
+
+    def role_list_item_size(self):
+        """设置角色列表项大小"""
+        from PySide6.QtCore import QSize
+        return QSize(0, 70)
 
     def on_basic_info_changed(self):
         """基本信息变更"""
@@ -866,27 +764,6 @@ class RoleManager(QWidget):
             "background_story": self.background_story.toPlainText()
         }
 
-    def create_new_role(self):
-        """创建新角色 - 修复版本，避免在异步上下文中调用setFocus"""
-        # 重置当前角色
-        self.current_role = ""
-
-        # 使用安全清空方式
-        self._safe_clear_editor()
-
-        # 清除所有选中状态
-        for i in range(self.role_grid_layout.count()):
-            widget = self.role_grid_layout.itemAt(i).widget()
-            if isinstance(widget, QFrame):
-                widget.setStyleSheet("""
-                    QFrame {
-                        border: 2px solid #e0e0e0;
-                        border-radius: 8px;
-                        background-color: white;
-                        padding: 10px;
-                    }
-                """)
-
     def save_current_role(self):
         """保存当前角色 - 预防性编程"""
         role_data = self.get_role_data()
@@ -904,8 +781,8 @@ class RoleManager(QWidget):
             self.all_roles[role_name] = role_data
             self.current_role = role_name
 
-            # 重新渲染角色网格
-            self.refresh_role_grid()
+            # 刷新角色列表
+            self.refresh_role_list()
 
             # 保存到项目文件
             if hasattr(self, 'save_roles'):
@@ -944,14 +821,11 @@ class RoleManager(QWidget):
 
             self.role_deleted.emit(self.current_role)
 
-            # 重新渲染角色网格
-            self.refresh_role_grid()
+            # 刷新角色列表
+            self.refresh_role_list()
 
             # 清空编辑器
             self.clear_editor()
-
-            # 更新统计信息
-            self.update_statistics()
 
             show_info_dialog(self, "成功", f"角色 '{self.current_role}' 已删除")
 
@@ -1444,30 +1318,6 @@ class RoleManager(QWidget):
 
         dialog.exec()
 
-    def update_statistics(self, filtered_count: int = None):
-        """更新统计信息
-
-        Args:
-            filtered_count: 当前过滤后显示的角色数量，如果为None则统计所有角色
-        """
-        if filtered_count is not None:
-            # 使用过滤后的数量
-            total_roles = filtered_count
-        else:
-            # 统计所有角色
-            total_roles = len(self.all_roles)
-
-        # 统计主要角色
-        main_roles = sum(1 for role in self.all_roles.values()
-                        if role.get("category") == "主要角色")
-
-        # 统计次要角色
-        minor_roles = total_roles - main_roles
-
-        self.total_roles_label.setText(str(total_roles))
-        self.main_roles_label.setText(str(main_roles))
-        self.minor_roles_label.setText(str(minor_roles))
-
     def load_project(self, project_path: str):
         """加载项目"""
         self.current_project_path = project_path
@@ -1487,8 +1337,6 @@ class RoleManager(QWidget):
                     # 加载保存的角色
                     for role_name, role_data in roles_data.items():
                         self.add_role(role_name, role_data.get("category", "未分类"), role_data)
-
-                    self.update_statistics()
         except Exception as e:
             # 如果没有保存的角色数据或加载失败，使用示例数据
             print(f"加载角色数据失败: {e}")
@@ -1496,7 +1344,7 @@ class RoleManager(QWidget):
     def clear_all_roles(self):
         """清除所有角色"""
         self.all_roles.clear()
-        self.clear_role_grid()
+        self.clear_role_list()
 
     def save_roles(self):
         """保存角色数据到项目"""
