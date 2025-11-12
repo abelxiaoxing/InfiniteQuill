@@ -394,6 +394,159 @@ class ThemeManager(QObject):
             border-color: #cccccc;
             color: #888888;
         }
+
+        /* ================ 信息面板样式 - 浅色主题 ================ */
+        QFrame#InfoPanel {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 6px;
+            padding: 10px;
+            color: #333333;
+        }
+
+        QFrame#InfoPanel QLabel {
+            color: #495057;
+        }
+
+        QFrame#InfoPanel QLabel#InfoPanelContent {
+            color: #6c757d;
+        }
+
+        /* ================ 角色列表样式 - 浅色主题 ================ */
+        QListWidget#RoleListWidget {
+            border: none;
+            background-color: transparent;
+            outline: none;
+        }
+
+        QListWidget#RoleListWidget::item {
+            padding: 12px;
+            border-bottom: 1px solid #e0e0e0;
+            margin: 0px;
+            color: #333333;
+        }
+
+        QListWidget#RoleListWidget::item:hover {
+            background-color: #f5f5f5;
+        }
+
+        QListWidget#RoleListWidget::item:selected {
+            background-color: #e3f2fd;
+            border-left: 4px solid #1976d2;
+        }
+
+        /* ================ 状态指示器样式 - 浅色主题 ================ */
+        QLabel#GenerationStatusIndicator {
+            padding: 2px 8px;
+            border-radius: 3px;
+            background-color: #e8f5e8;
+            color: #2e7d2e;
+        }
+
+        QLabel#GenerationStatusIndicator[status="generating"] {
+            background-color: #fff3cd;
+            color: #856404;
+            font-weight: bold;
+        }
+
+        QLabel#GenerationStatusIndicator[status="idle"] {
+            background-color: #e8f5e8;
+            color: #2e7d2e;
+            font-weight: normal;
+        }
+
+        /* ================ 导入标题样式 - 浅色主题 ================ */
+        QLabel#ImportTitleLabel {
+            background-color: #e8f5e8;
+            color: #2e7d2e;
+        }
+
+        /* ================ 应用设置标题样式 - 浅色主题 ================ */
+        QLabel#AppSettingsTitle {
+            padding: 10px;
+            background-color: #f8f9fa;
+            border-radius: 6px;
+            margin-bottom: 10px;
+            color: #333333;
+            font-weight: bold;
+        }
+
+        /* ================ 主题预览框架 - 浅色主题 ================ */
+        QFrame#ThemePreviewFrame {
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            background-color: #ffffff;
+            color: #333333;
+            padding: 20px;
+        }
+
+        /* ================ 主题预览标题 - 浅色主题 ================ */
+        QLabel#ThemePreviewTitle {
+            font-weight: bold;
+            font-size: 12pt;
+            color: #333333;
+        }
+
+        /* ================ 架构状态标签 - 浅色主题 ================ */
+        QLabel#ArchitectureStatusLabel {
+            color: #666666;
+            font-style: italic;
+        }
+
+        QLabel#ArchitectureStatusLabel[status="success"] {
+            color: #27ae60;
+            font-style: normal;
+        }
+
+        QLabel#ArchitectureStatusLabel[status="warning"] {
+            color: #f39c12;
+            font-style: normal;
+        }
+
+        /* ================ 主窗口组件标题 - 浅色主题 ================ */
+        /* 生成组件标题 */
+        QLabel#GenerationWidgetTitle {
+            padding: 10px;
+            border-radius: 6px;
+            margin-bottom: 10px;
+            background-color: #e8f5e8;
+            color: #333333;
+            font-weight: bold;
+            font-size: 14pt;
+        }
+
+        /* 章节编辑器标题 */
+        QLabel#ChapterEditorTitle {
+            padding: 10px;
+            border-radius: 6px;
+            margin-bottom: 10px;
+            background-color: #e3f2fd;
+            color: #333333;
+            font-weight: bold;
+            font-size: 14pt;
+        }
+
+        /* 角色管理器标题 */
+        QLabel#RoleManagerTitle {
+            padding: 10px;
+            border-radius: 6px;
+            margin-bottom: 10px;
+            background-color: #f3e5f5;
+            color: #333333;
+            font-weight: bold;
+            font-size: 14pt;
+        }
+
+        /* ================ 状态栏 - 浅色主题 ================ */
+        QStatusBar {
+            background-color: #f0f0f0;
+            color: #333333;
+            border-top: 1px solid #ddd;
+        }
+
+        QStatusBar::item {
+            border: none;
+        }
         """
 
     def get_dark_theme(self) -> str:
@@ -755,6 +908,159 @@ class ThemeManager(QObject):
             background-color: #424242;
             border-color: #616161;
             color: #888888;
+        }
+
+        /* ================ 信息面板样式 - 暗色主题 ================ */
+        QFrame#InfoPanel {
+            background-color: #2d2d2d;
+            border: 1px solid #555555;
+            border-radius: 6px;
+            padding: 10px;
+            color: #ffffff;
+        }
+
+        QFrame#InfoPanel QLabel {
+            color: #ffffff;
+        }
+
+        QFrame#InfoPanel QLabel#InfoPanelContent {
+            color: #cccccc;
+        }
+
+        /* ================ 角色列表样式 - 暗色主题 ================ */
+        QListWidget#RoleListWidget {
+            border: none;
+            background-color: transparent;
+            outline: none;
+        }
+
+        QListWidget#RoleListWidget::item {
+            padding: 12px;
+            border-bottom: 1px solid #555555;
+            margin: 0px;
+            color: #ffffff;
+        }
+
+        QListWidget#RoleListWidget::item:hover {
+            background-color: #4a4a4a;
+        }
+
+        QListWidget#RoleListWidget::item:selected {
+            background-color: #1e88e5;
+            border-left: 4px solid #1976d2;
+        }
+
+        /* ================ 状态指示器样式 - 暗色主题 ================ */
+        QLabel#GenerationStatusIndicator {
+            padding: 2px 8px;
+            border-radius: 3px;
+            background-color: #43a047;
+            color: #ffffff;
+        }
+
+        QLabel#GenerationStatusIndicator[status="generating"] {
+            background-color: #ffa726;
+            color: #000000;
+            font-weight: bold;
+        }
+
+        QLabel#GenerationStatusIndicator[status="idle"] {
+            background-color: #43a047;
+            color: #ffffff;
+            font-weight: normal;
+        }
+
+        /* ================ 导入标题样式 - 暗色主题 ================ */
+        QLabel#ImportTitleLabel {
+            background-color: #2d2d2d;
+            color: #ffffff;
+        }
+
+        /* ================ 应用设置标题样式 - 暗色主题 ================ */
+        QLabel#AppSettingsTitle {
+            padding: 10px;
+            background-color: #2d2d2d;
+            border-radius: 6px;
+            margin-bottom: 10px;
+            color: #ffffff;
+            font-weight: bold;
+        }
+
+        /* ================ 主题预览框架 - 暗色主题 ================ */
+        QFrame#ThemePreviewFrame {
+            border: 2px solid #555555;
+            border-radius: 8px;
+            background-color: #2d2d2d;
+            color: #ffffff;
+            padding: 20px;
+        }
+
+        /* ================ 主题预览标题 - 暗色主题 ================ */
+        QLabel#ThemePreviewTitle {
+            font-weight: bold;
+            font-size: 12pt;
+            color: #ffffff;
+        }
+
+        /* ================ 架构状态标签 - 暗色主题 ================ */
+        QLabel#ArchitectureStatusLabel {
+            color: #aaaaaa;
+            font-style: italic;
+        }
+
+        QLabel#ArchitectureStatusLabel[status="success"] {
+            color: #43a047;
+            font-style: normal;
+        }
+
+        QLabel#ArchitectureStatusLabel[status="warning"] {
+            color: #ffa726;
+            font-style: normal;
+        }
+
+        /* ================ 主窗口组件标题 - 暗色主题 ================ */
+        /* 生成组件标题 */
+        QLabel#GenerationWidgetTitle {
+            padding: 10px;
+            border-radius: 6px;
+            margin-bottom: 10px;
+            background-color: #1b5e20;
+            color: #ffffff;
+            font-weight: bold;
+            font-size: 14pt;
+        }
+
+        /* 章节编辑器标题 */
+        QLabel#ChapterEditorTitle {
+            padding: 10px;
+            border-radius: 6px;
+            margin-bottom: 10px;
+            background-color: #1565c0;
+            color: #ffffff;
+            font-weight: bold;
+            font-size: 14pt;
+        }
+
+        /* 角色管理器标题 */
+        QLabel#RoleManagerTitle {
+            padding: 10px;
+            border-radius: 6px;
+            margin-bottom: 10px;
+            background-color: #6a1b9a;
+            color: #ffffff;
+            font-weight: bold;
+            font-size: 14pt;
+        }
+
+        /* ================ 状态栏 - 暗色主题 ================ */
+        QStatusBar {
+            background-color: #1e1e1e;
+            color: #ffffff;
+            border-top: 1px solid #555;
+        }
+
+        QStatusBar::item {
+            border: none;
         }
         """
 

@@ -15,13 +15,14 @@ from PySide6.QtWidgets import (
     QMessageBox, QCheckBox, QDialogButtonBox, QSlider,
     QTextEdit, QFrame, QColorDialog, QWidget
 )
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import Qt, Signal, QEvent
 from PySide6.QtGui import QFont
 
 from ..utils.ui_helpers import (
     create_separator, set_font_size, show_info_dialog,
     show_error_dialog, create_label_with_help
 )
+from ..utils.theme_manager import ThemeManager
 from config_manager import get_user_config_path
 
 
@@ -31,12 +32,28 @@ class SettingsDialog(QDialog):
     # 信号定义
     settings_applied = Signal(dict)  # 设置已应用信号
 
-    def __init__(self, config: Dict[str, Any], parent=None):
+    def __init__(self, config: Dict[str, Any], theme_manager=None, parent=None):
         super().__init__(parent)
         self.config = config.copy()
         self.original_config = config.copy()  # 保存原始配置
+
+        # 使用传递的theme_manager，如果没传则创建新的
+        if theme_manager is None:
+            self.theme_manager = ThemeManager()
+        else:
+            self.theme_manager = theme_manager
+
         self.setup_ui()
         self.load_settings()
+
+        # 在UI创建完成后立即应用主题（确保控件继承QSS）
+        self.apply_current_theme()
+
+    def showEvent(self, event):
+        """对话框显示事件"""
+        super().showEvent(event)
+        # 移除重复应用主题，__init__中已经应用，且theme_manager已共享
+        # 避免重复应用导致主题状态不一致
 
     def setup_ui(self):
         """设置UI"""
@@ -48,11 +65,11 @@ class SettingsDialog(QDialog):
         layout.setContentsMargins(10, 10, 10, 10)
         layout.setSpacing(10)
 
-        # 创建标题
+        # 创建标题 - 使用主题感知样式
         title_label = QLabel(" 应用设置")
+        title_label.setObjectName("AppSettingsTitle")
         set_font_size(title_label, 14, bold=True)
         title_label.setAlignment(Qt.AlignCenter)
-        title_label.setStyleSheet("padding: 10px; background-color: #f8f9fa; border-radius: 6px; margin-bottom: 10px;")
         layout.addWidget(title_label)
 
         # 创建选项卡
@@ -68,6 +85,86 @@ class SettingsDialog(QDialog):
 
         # 底部按钮
         self.create_bottom_buttons(layout)
+
+    def apply_current_theme(self):
+        """应用当前主题到对话框"""
+        # 优先从theme_settings读取，兼容旧配置
+        theme_settings = self.config.get("theme_settings", {})
+        current_theme = theme_settings.get("current_theme")
+
+        # 如果没有，再从顶层配置读取
+        if not current_theme:
+            current_theme = self.config.get("theme", "light")
+
+        # 标准化主题名称
+        if current_theme == "auto":
+            # 检测系统主题
+            actual_theme = self.detect_system_theme()
+        else:
+            actual_theme = current_theme
+
+        # 应用主题样式到全局
+        self.theme_manager.apply_theme(self, actual_theme)
+
+    def detect_system_theme(self) -> str:
+        """检测系统主题（深色/浅色）"""
+        import platform
+        import subprocess
+        import json
+
+        try:
+            system = platform.system()
+
+            if system == "Windows":
+                # Windows 10/11 检测
+                try:
+                    import winreg
+                    registry = winreg.ConnectRegistry(None, winreg.HKEY_CURRENT_USER)
+                    key = winreg.OpenKey(registry, r"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize")
+                    value, _ = winreg.QueryValueEx(key, "AppsUseLightTheme")
+                    winreg.CloseKey(key)
+                    return "light" if value else "dark"
+                except:
+                    pass
+
+            elif system == "Darwin":  # macOS
+                try:
+                    # 检测macOS Dark Mode
+                    result = subprocess.run(
+                        ["defaults", "read", "-g", "AppleInterfaceStyle"],
+                        capture_output=True, text=True
+                    )
+                    return "dark" if "Dark" in result.stdout else "light"
+                except:
+                    pass
+
+            elif system == "Linux":
+                # 检测Linux主题（GNOME/KDE等）
+                try:
+                    # GNOME
+                    result = subprocess.run(
+                        ["gsettings", "get", "org.gnome.desktop.interface", "gtk-theme"],
+                        capture_output=True, text=True
+                    )
+                    theme_name = result.stdout.strip().strip("'\"")
+                    if "dark" in theme_name.lower():
+                        return "dark"
+
+                    # KDE
+                    result = subprocess.run(
+                        ["kreadconfig5", "--key", "Theme"],
+                        capture_output=True, text=True, stderr=subprocess.DEVNULL
+                    )
+                    if "dark" in result.stdout.lower():
+                        return "dark"
+                except:
+                    pass
+
+            # 默认浅色主题
+            return "light"
+
+        except Exception:
+            return "light"
 
     def create_general_tab(self):
         """创建常规设置选项卡"""
@@ -220,20 +317,13 @@ F5: 刷新预览              F11: 全屏模式""")
 
         # 主题预览
         self.theme_preview = QFrame()
-        self.theme_preview.setStyleSheet("""
-            QFrame {
-                border: 2px solid #ddd;
-                border-radius: 8px;
-                background-color: white;
-                padding: 20px;
-            }
-        """)
+        self.theme_preview.setObjectName("ThemePreviewFrame")
         self.theme_preview.setMinimumHeight(150)
 
         preview_layout = QVBoxLayout(self.theme_preview)
 
         preview_title = QLabel("主题预览")
-        preview_title.setStyleSheet("font-weight: bold; font-size: 12pt;")
+        preview_title.setObjectName("ThemePreviewTitle")
         preview_layout.addWidget(preview_title)
 
         preview_text = QLabel("这是主题预览文本，显示当前主题的颜色和样式效果。")
@@ -337,7 +427,7 @@ F5: 刷新预览              F11: 全屏模式""")
 
         # 状态提示
         self.architecture_status = QLabel("未加载文件")
-        self.architecture_status.setStyleSheet("color: #666; font-style: italic;")
+        self.architecture_status.setObjectName("ArchitectureStatusLabel")
         arch_layout.addWidget(self.architecture_status)
 
         layout.addWidget(arch_group)
@@ -650,37 +740,13 @@ F5: 刷新预览              F11: 全屏模式""")
         # 设置选中状态
         if theme_name == "light":
             self.light_theme_btn.setChecked(True)
-            self.theme_preview.setStyleSheet("""
-                QFrame {
-                    border: 2px solid #ddd;
-                    border-radius: 8px;
-                    background-color: white;
-                    color: #333;
-                    padding: 20px;
-                }
-            """)
         elif theme_name == "dark":
             self.dark_theme_btn.setChecked(True)
-            self.theme_preview.setStyleSheet("""
-                QFrame {
-                    border: 2px solid #555;
-                    border-radius: 8px;
-                    background-color: #2d2d2d;
-                    color: white;
-                    padding: 20px;
-                }
-            """)
-        else:
+        else:  # auto
             self.auto_theme_btn.setChecked(True)
-            self.theme_preview.setStyleSheet("""
-                QFrame {
-                    border: 2px solid #888;
-                    border-radius: 8px;
-                    background-color: #f0f0f0;
-                    color: #333;
-                    padding: 20px;
-                }
-            """)
+
+        # 重新应用主题到整个对话框
+        self.theme_manager.apply_theme(self, theme_name)
 
     def select_color(self, color_type: str):
         """选择颜色"""
@@ -764,11 +830,15 @@ F5: 刷新预览              F11: 全屏模式""")
                     content = f.read()
                 self.architecture_editor.setPlainText(content)
                 self.architecture_status.setText(f"已加载: {filename}")
-                self.architecture_status.setStyleSheet("color: #27ae60; font-style: normal;")
+                self.architecture_status.setProperty("status", "success")
+                self.architecture_status.style().unpolish(self.architecture_status)
+                self.architecture_status.style().polish(self.architecture_status)
             else:
                 self.architecture_editor.clear()
                 self.architecture_status.setText(f"文件不存在，将创建新文件: {filename}")
-                self.architecture_status.setStyleSheet("color: #f39c12; font-style: normal;")
+                self.architecture_status.setProperty("status", "warning")
+                self.architecture_status.style().unpolish(self.architecture_status)
+                self.architecture_status.style().polish(self.architecture_status)
         except Exception as e:
             show_error_dialog(self, "错误", f"加载文件失败: {str(e)}")
 
@@ -790,7 +860,9 @@ F5: 刷新预览              F11: 全屏模式""")
                 f.write(content)
 
             self.architecture_status.setText(f"已保存: {filename}")
-            self.architecture_status.setStyleSheet("color: #27ae60; font-style: normal;")
+            self.architecture_status.setProperty("status", "success")
+            self.architecture_status.style().unpolish(self.architecture_status)
+            self.architecture_status.style().polish(self.architecture_status)
             show_info_dialog(self, "成功", "小说架构文件保存成功！")
         except Exception as e:
             show_error_dialog(self, "错误", f"保存文件失败: {str(e)}")

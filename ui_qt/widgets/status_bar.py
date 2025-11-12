@@ -45,6 +45,7 @@ class StatusBar(QStatusBar):
 
         # 创建生成状态指示器
         self.generation_status = QLabel("空闲")
+        self.generation_status.setObjectName("GenerationStatusIndicator")
         self.generation_status.setStyleSheet("""
             QLabel {
                 padding: 2px 8px;
@@ -111,25 +112,16 @@ class StatusBar(QStatusBar):
         """
         if is_generating:
             self.generation_status.setText("生成中...")
-            self.generation_status.setStyleSheet("""
-                QLabel {
-                    padding: 2px 8px;
-                    border-radius: 3px;
-                    background-color: #fff3cd;
-                    color: #856404;
-                    font-weight: bold;
-                }
-            """)
+            # 使用CSS类来支持主题感知
+            self.generation_status.setProperty("status", "generating")
+            self.generation_status.style().unpolish(self.generation_status)
+            self.generation_status.style().polish(self.generation_status)
         else:
             self.generation_status.setText("空闲")
-            self.generation_status.setStyleSheet("""
-                QLabel {
-                    padding: 2px 8px;
-                    border-radius: 3px;
-                    background-color: #e8f5e8;
-                    color: #2e7d2e;
-                }
-            """)
+            # 使用CSS类来支持主题感知
+            self.generation_status.setProperty("status", "idle")
+            self.generation_status.style().unpolish(self.generation_status)
+            self.generation_status.style().polish(self.generation_status)
 
     def set_progress(self, value: int, maximum: int = 100, text: str = ""):
         """设置进度条

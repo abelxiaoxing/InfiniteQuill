@@ -50,7 +50,12 @@ class RoleImportDialog(QDialog):
         title_label = QLabel(" 导入角色信息")
         set_font_size(title_label, 14, bold=True)
         title_label.setAlignment(Qt.AlignCenter)
-        title_label.setStyleSheet("padding: 10px; background-color: #e8f5e8; border-radius: 6px; margin-bottom: 10px;")
+        title_label.setObjectName("ImportTitleLabel")
+        title_label.setStyleSheet("""
+            padding: 10px;
+            border-radius: 6px;
+            margin-bottom: 10px;
+        """)
         layout.addWidget(title_label)
 
         # 创建主分割器
@@ -231,7 +236,8 @@ class RoleImportDialog(QDialog):
 
         self.import_btn = QPushButton(" 导入选中角色")
         self.import_btn.clicked.connect(self.import_selected_roles)
-        self.import_btn.setStyleSheet("font-weight: bold; background-color: #4caf50; color: white;")
+        self.import_btn.setObjectName("ImportRoleButton")
+        self.import_btn.setProperty("style", "success")
         self.import_btn.setEnabled(False)
         button_layout.addWidget(self.import_btn)
 

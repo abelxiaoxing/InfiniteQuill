@@ -44,9 +44,6 @@ def create_separator(orientation: str = "horizontal", width: int = 1, theme_awar
             QFrame#ThemeAwareSeparator {
                 background-color: #c0c0c0;
             }
-            QFrame#ThemeAwareSeparator[theme="dark"] {
-                background-color: #555555;
-            }
         """)
     else:
         separator.setStyleSheet("background-color: #c0c0c0;")
@@ -329,10 +326,10 @@ def create_label_with_help(parent: QWidget, text: str, tooltip: str) -> QWidget:
             font-size: 10pt;
             padding: 0px 4px;
             border-radius: 10px;
-            background-color: #e3f2fd;
+            background-color: transparent;
         }
         QLabel:hover {
-            background-color: #bbdefb;
+            background-color: rgba(227, 242, 253, 0.3);
         }
     """)
     help_button.setToolTip(tooltip)
@@ -388,8 +385,10 @@ def create_info_panel(parent: QWidget, title: str, content: str, icon: str = "[�
             border: 1px solid #dee2e6;
             border-radius: 6px;
             padding: 10px;
+            color: #333333;
         }
     """)
+    panel.setObjectName("InfoPanel")
 
     layout = QVBoxLayout(panel)
     layout.setContentsMargins(10, 10, 10, 10)
@@ -412,6 +411,9 @@ def create_info_panel(parent: QWidget, title: str, content: str, icon: str = "[�
     content_label = QLabel(content)
     content_label.setWordWrap(True)
     content_label.setStyleSheet("color: #6c757d; margin-top: 5px;")
+
+    # 让内容标签也感知主题
+    content_label.setObjectName("InfoPanelContent")
     layout.addWidget(content_label)
 
     return panel

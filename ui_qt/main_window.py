@@ -224,251 +224,16 @@ class MainWindow(QMainWindow):
         """应用主题"""
         theme_name = self.config.get("theme", "light")
         self.theme_manager.apply_theme(self, theme_name)
-        # 更新各个组件的主题
-        self.update_component_themes(theme_name)
+        # 不再需要update_component_themes，所有样式都通过ThemeManager管理
+        # 移除主窗口的内联QSS，避免覆盖ThemeManager的样式
+        # 移除对各个组件的主题更新，依赖ThemeManager的统一管理
 
     def update_component_themes(self, theme_name: str):
-        """更新组件主题以适配深浅色切换"""
-        try:
-            self.logger.info(f"开始更新主题: {theme_name}")
-
-            # 更新主窗口背景
-            if theme_name == "dark":
-                # 深色主题样式
-                self.setStyleSheet("""
-                    QMainWindow {
-                        background-color: #2d2d2d;
-                        color: #ffffff;
-                    }
-                    QTabWidget::pane {
-                        border: 1px solid #555;
-                        background-color: #3d3d3d;
-                    }
-                    QTabBar::tab {
-                        background-color: #404040;
-                        color: #ffffff;
-                        padding: 8px 16px;
-                        margin-right: 2px;
-                        border-top-left-radius: 4px;
-                        border-top-right-radius: 4px;
-                    }
-                    QTabBar::tab:selected {
-                        background-color: #3d3d3d;
-                    }
-                    QTabBar::tab:hover {
-                        background-color: #505050;
-                    }
-                    QGroupBox {
-                        font-weight: bold;
-                        border: 2px solid #555;
-                        border-radius: 5px;
-                        margin-top: 10px;
-                        padding-top: 10px;
-                        background-color: #3d3d3d;
-                        color: #ffffff;
-                    }
-                    QGroupBox::title {
-                        subcontrol-origin: margin;
-                        left: 10px;
-                        padding: 0 5px 0 5px;
-                        color: #ffffff;
-                    }
-                """)
-            else:
-                # 浅色主题样式
-                self.setStyleSheet("""
-                    QMainWindow {
-                        background-color: #f5f5f5;
-                        color: #333333;
-                    }
-                    QTabWidget::pane {
-                        border: 1px solid #ddd;
-                        background-color: #ffffff;
-                    }
-                    QTabBar::tab {
-                        background-color: #e0e0e0;
-                        color: #333333;
-                        padding: 8px 16px;
-                        margin-right: 2px;
-                        border-top-left-radius: 4px;
-                        border-top-right-radius: 4px;
-                    }
-                    QTabBar::tab:selected {
-                        background-color: #ffffff;
-                    }
-                    QTabBar::tab:hover {
-                        background-color: #f0f0f0;
-                    }
-                    QGroupBox {
-                        font-weight: bold;
-                        border: 2px solid #ddd;
-                        border-radius: 5px;
-                        margin-top: 10px;
-                        padding-top: 10px;
-                        background-color: #ffffff;
-                        color: #333333;
-                    }
-                    QGroupBox::title {
-                        subcontrol-origin: margin;
-                        left: 10px;
-                        padding: 0 5px 0 5px;
-                        color: #333333;
-                    }
-                """)
-
-            # 更新生成组件标题
-            self._update_generation_widget_theme(theme_name)
-
-            # 更新章节编辑器主题
-            self._update_chapter_editor_theme(theme_name)
-
-            # 更新角色管理器主题
-            self._update_role_manager_theme(theme_name)
-
-            # 更新状态栏主题
-            self._update_status_bar_theme(theme_name)
-
-            self.logger.info(f"主题更新完成: {theme_name}")
-
-        except Exception as e:
-            self.logger.error(f"主题更新失败: {str(e)}")
-
-    def _update_generation_widget_theme(self, theme_name: str):
-        """更新生成组件主题"""
-        if not hasattr(self, 'generation_widget'):
-            return
-
-        try:
-            widget = self.generation_widget
-            if theme_name == "dark":
-                # 深色主题
-                if hasattr(widget, 'title_label'):
-                    widget.title_label.setStyleSheet("""
-                        padding: 10px;
-                        border-radius: 6px;
-                        margin-bottom: 10px;
-                        background-color: #1b5e20;
-                        color: #ffffff;
-                        font-weight: bold;
-                        font-size: 14pt;
-                    """)
-            else:
-                # 浅色主题
-                if hasattr(widget, 'title_label'):
-                    widget.title_label.setStyleSheet("""
-                        padding: 10px;
-                        border-radius: 6px;
-                        margin-bottom: 10px;
-                        background-color: #e8f5e8;
-                        color: #333333;
-                        font-weight: bold;
-                        font-size: 14pt;
-                    """)
-        except Exception as e:
-            self.logger.error(f"更新生成组件主题失败: {str(e)}")
-
-    def _update_chapter_editor_theme(self, theme_name: str):
-        """更新章节编辑器主题"""
-        if not hasattr(self, 'chapter_editor'):
-            return
-
-        try:
-            widget = self.chapter_editor
-            # 调用章节编辑器的主题更新方法
-            if hasattr(widget, 'update_theme_styles'):
-                widget.update_theme_styles()
-            else:
-                # 备用方案：手动更新title_label
-                if hasattr(widget, 'title_label'):
-                    if theme_name == "dark":
-                        widget.title_label.setStyleSheet("""
-                            padding: 10px;
-                            border-radius: 6px;
-                            margin-bottom: 10px;
-                            background-color: #1565c0;
-                            color: #ffffff;
-                            font-weight: bold;
-                            font-size: 14pt;
-                        """)
-                    else:
-                        widget.title_label.setStyleSheet("""
-                            padding: 10px;
-                            border-radius: 6px;
-                            margin-bottom: 10px;
-                            background-color: #e3f2fd;
-                            color: #333333;
-                            font-weight: bold;
-                            font-size: 14pt;
-                        """)
-        except Exception as e:
-            self.logger.error(f"更新章节编辑器主题失败: {str(e)}")
-
-    def _update_role_manager_theme(self, theme_name: str):
-        """更新角色管理器主题"""
-        if not hasattr(self, 'role_manager'):
-            return
-
-        try:
-            widget = self.role_manager
-            if theme_name == "dark":
-                # 深色主题
-                if hasattr(widget, 'title_label'):
-                    widget.title_label.setStyleSheet("""
-                        padding: 10px;
-                        border-radius: 6px;
-                        margin-bottom: 10px;
-                        background-color: #6a1b9a;
-                        color: #ffffff;
-                        font-weight: bold;
-                        font-size: 14pt;
-                    """)
-            else:
-                # 浅色主题
-                if hasattr(widget, 'title_label'):
-                    widget.title_label.setStyleSheet("""
-                        padding: 10px;
-                        border-radius: 6px;
-                        margin-bottom: 10px;
-                        background-color: #f3e5f5;
-                        color: #333333;
-                        font-weight: bold;
-                        font-size: 14pt;
-                    """)
-        except Exception as e:
-            self.logger.error(f"更新角色管理器主题失败: {str(e)}")
-
-    def _update_status_bar_theme(self, theme_name: str):
-        """更新状态栏主题"""
-        if not hasattr(self, 'status_bar'):
-            return
-
-        try:
-            if theme_name == "dark":
-                # 深色主题
-                self.status_bar.setStyleSheet("""
-                    QStatusBar {
-                        background-color: #1e1e1e;
-                        color: #ffffff;
-                        border-top: 1px solid #555;
-                    }
-                    QStatusBar::item {
-                        border: none;
-                    }
-                """)
-            else:
-                # 浅色主题
-                self.status_bar.setStyleSheet("""
-                    QStatusBar {
-                        background-color: #f0f0f0;
-                        color: #333333;
-                        border-top: 1px solid #ddd;
-                    }
-                    QStatusBar::item {
-                        border: none;
-                    }
-                """)
-        except Exception as e:
-            self.logger.error(f"更新状态栏主题失败: {str(e)}")
+        """更新组件主题以适配深浅色切换
+        已废弃：所有主题都通过ThemeManager统一管理，不再需要单独更新
+        """
+        # 留空，所有主题都通过ThemeManager的app.setStyleSheet()应用
+        pass
 
     def on_config_changed(self, new_config: Dict[str, Any]):
         """配置变更处理"""
@@ -587,7 +352,8 @@ class MainWindow(QMainWindow):
 
     def show_settings(self):
         """显示设置对话框"""
-        dialog = SettingsDialog(self.config, self)
+        # 传递theme_manager给对话框，确保主题同步
+        dialog = SettingsDialog(self.config, self.theme_manager, self)
         if dialog.exec_() == SettingsDialog.Accepted:
             self.config.update(dialog.get_config())
             self.on_config_changed(self.config)
@@ -595,6 +361,12 @@ class MainWindow(QMainWindow):
     def change_theme(self, theme_name: str):
         """更改主题"""
         self.config["theme"] = theme_name
+
+        # 同时更新theme_settings中的current_theme，确保配置一致性
+        if "theme_settings" not in self.config:
+            self.config["theme_settings"] = {}
+        self.config["theme_settings"]["current_theme"] = theme_name
+
         self.apply_theme()
         self.save_config()
         self.status_bar.show_message(f"主题已切换到: {theme_name}", 3000)

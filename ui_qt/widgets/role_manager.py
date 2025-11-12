@@ -194,23 +194,24 @@ class RoleManager(QWidget):
 
         # 角色列表视图（显示详细信息）
         self.role_list = QListWidget()
+        self.role_list.setObjectName("RoleListWidget")
         self.role_list.setSelectionMode(QListWidget.SingleSelection)
         self.role_list.itemClicked.connect(self.on_role_item_clicked)
         self.role_list.setStyleSheet("""
-            QListWidget {
+            QListWidget#RoleListWidget {
                 border: none;
                 background-color: transparent;
                 outline: none;
             }
-            QListWidget::item {
+            QListWidget#RoleListWidget::item {
                 padding: 12px;
                 border-bottom: 1px solid #e0e0e0;
                 margin: 0px;
             }
-            QListWidget::item:hover {
+            QListWidget#RoleListWidget::item:hover {
                 background-color: #f5f5f5;
             }
-            QListWidget::item:selected {
+            QListWidget#RoleListWidget::item:selected {
                 background-color: #e3f2fd;
                 border-left: 4px solid #1976d2;
             }
@@ -1547,7 +1548,8 @@ class RoleManager(QWidget):
         btn_layout.addWidget(cancel_btn)
 
         generate_btn = QPushButton("生成角色")
-        generate_btn.setStyleSheet("background-color: #2196f3; color: white; font-weight: bold;")
+        generate_btn.setObjectName("GenerateRoleButton")
+        generate_btn.setProperty("style", "primary")
         generate_btn.clicked.connect(lambda: self._perform_ai_generation_with_inputs(dialog))
         btn_layout.addWidget(generate_btn)
 
