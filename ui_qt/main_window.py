@@ -46,10 +46,12 @@ class MainWindow(QMainWindow):
         # 初始化项目管理器
         self.project_manager = ProjectManager()
 
+        # 先应用初始主题（在创建组件之前）
+        self.apply_initial_theme()
+
         # 初始化界面
         self.setup_ui()
         self.setup_connections()
-        self.apply_theme()
 
         # 初始化状态
         self.current_project_path = ""
@@ -220,6 +222,27 @@ class MainWindow(QMainWindow):
         # 标签页切换信号
         self.tab_widget.currentChanged.connect(self.on_tab_changed)
 
+    def apply_initial_theme(self):
+        """应用初始主题（在创建组件之前调用）"""
+        theme_name = self.config.get("theme", "light")
+        # 先应用到QApplication
+        self.theme_manager.apply_theme(self, theme_name)
+
+        # 确保所有组件初始化后再次更新（解决深色模式启动问题）
+        from PySide6.QtCore import QTimer
+        QTimer.singleShot(0, self.post_theme_init)
+
+    def post_theme_init(self):
+        """主题应用完成后的初始化"""
+        # 更新章节编辑器的主题样式
+        if hasattr(self, 'chapter_editor'):
+            self.chapter_editor.update_theme_styles()
+
+        # 更新状态栏的主题显示
+        if hasattr(self, 'status_bar'):
+            theme_name = self.config.get("theme", "light")
+            self.status_bar.update_theme_display(theme_name)
+
     def apply_theme(self):
         """应用主题"""
         theme_name = self.config.get("theme", "light")
@@ -368,6 +391,15 @@ class MainWindow(QMainWindow):
         self.config["theme_settings"]["current_theme"] = theme_name
 
         self.apply_theme()
+
+        # 更新章节编辑器的主题样式
+        if hasattr(self, 'chapter_editor'):
+            self.chapter_editor.update_theme_styles()
+
+        # 更新状态栏的主题显示
+        if hasattr(self, 'status_bar'):
+            self.status_bar.update_theme_display(theme_name)
+
         self.save_config()
         self.status_bar.show_message(f"主题已切换到: {theme_name}", 3000)
 

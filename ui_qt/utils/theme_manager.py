@@ -547,6 +547,11 @@ class ThemeManager(QObject):
         QStatusBar::item {
             border: none;
         }
+
+        QLabel#StatusBarSeparator {
+            color: #999999;
+            padding: 0px 2px;
+        }
         """
 
     def get_dark_theme(self) -> str:
@@ -1061,6 +1066,11 @@ class ThemeManager(QObject):
 
         QStatusBar::item {
             border: none;
+        }
+
+        QLabel#StatusBarSeparator {
+            color: #666666;
+            padding: 0px 2px;
         }
         """
 

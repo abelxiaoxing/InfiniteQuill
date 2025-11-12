@@ -31,7 +31,9 @@ class StatusBar(QStatusBar):
         self.addWidget(self.status_label)
 
         # 添加分隔符
-        self.addWidget(QLabel("|"))
+        separator1 = QLabel("|")
+        separator1.setObjectName("StatusBarSeparator")
+        self.addWidget(separator1)
 
         # 创建进度条（默认隐藏）
         self.progress_bar = QProgressBar()
@@ -41,7 +43,9 @@ class StatusBar(QStatusBar):
         self.addWidget(self.progress_bar)
 
         # 添加分隔符
-        self.addWidget(QLabel("|"))
+        separator2 = QLabel("|")
+        separator2.setObjectName("StatusBarSeparator")
+        self.addWidget(separator2)
 
         # 创建生成状态指示器
         self.generation_status = QLabel("空闲")
@@ -57,7 +61,9 @@ class StatusBar(QStatusBar):
         self.addWidget(self.generation_status)
 
         # 添加分隔符
-        self.addWidget(QLabel("|"))
+        separator3 = QLabel("|")
+        separator3.setObjectName("StatusBarSeparator")
+        self.addWidget(separator3)
 
         # 创建项目路径标签
         self.project_label = QLabel("未打开项目")
@@ -75,7 +81,9 @@ class StatusBar(QStatusBar):
         permanent_layout.addWidget(self.theme_label)
 
         # 添加分隔符
-        permanent_layout.addWidget(QLabel("|"))
+        separator4 = QLabel("|")
+        separator4.setObjectName("StatusBarSeparator")
+        permanent_layout.addWidget(separator4)
 
         # 时间显示
         self.time_label = QLabel()
@@ -165,6 +173,18 @@ class StatusBar(QStatusBar):
             theme_name: 主题名称
         """
         self.theme_label.setText(f"{theme_name}主题")
+
+    def update_theme_display(self, theme_name: str):
+        """更新主题显示（用于深浅色切换）
+
+        Args:
+            theme_name: 主题名称 ('light' 或 'dark')
+        """
+        # 更新主题标签文本
+        if theme_name == "dark":
+            self.theme_label.setText("深色主题")
+        else:
+            self.theme_label.setText("浅色主题")
 
     def update_time(self):
         """更新时间显示"""
