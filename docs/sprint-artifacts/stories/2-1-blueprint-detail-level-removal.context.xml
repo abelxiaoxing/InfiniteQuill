@@ -1,0 +1,182 @@
+<story-context id="2-1-blueprint-detail-level-removal" v="1.0">
+  <metadata>
+    <epicId>2</epicId>
+    <storyId>2-1</storyId>
+    <title>章节蓝图详细程度选项移除</title>
+    <status>ready-for-dev</status>
+    <generatedAt>2025-11-17</generatedAt>
+    <generator>BMAD Story Context Workflow</generator>
+    <sourceStoryPath>/home/abelxiaoxing/work/InfiniteQuill/docs/sprint-artifacts/2-1-blueprint-detail-level-removal.md</sourceStoryPath>
+  </metadata>
+
+  <story>
+    <asA>最终用户</asA>
+    <iWant>简化章节蓝图生成界面</iWant>
+    <soThat>无需选择详细程度就能获得最佳的生成质量</soThat>
+    <tasks>
+      <task id="task-1" title="UI控件识别和移除 (AC#1)">
+        <subtask>在config_widget.py中定位详细程度选择控件(查找combo box、select或dropdown)</subtask>
+        <subtask>识别控件的变量名和初始化代码</subtask>
+        <subtask>识别控件的布局位置(layout.addWidget等)</subtask>
+        <subtask>移除控件初始化代码</subtask>
+        <subtask>移除控件添加到布局的代码</subtask>
+        <subtask>测试UI布局自动调整</subtask>
+      </task>
+      <task id="task-2" title="蓝图生成逻辑修改 (AC#2, #4)">
+        <subtask>在blueprint.py中查找generate_blueprint()函数</subtask>
+        <subtask>定位detail_level参数</subtask>
+        <subtask>移除detail_level参数(如果存在)</subtask>
+        <subtask>在函数内部固定设置detail_level = "detailed"</subtask>
+        <subtask>验证生成的蓝图内容长度和质量</subtask>
+        <subtask>测试简要/标准模式不会被使用</subtask>
+      </task>
+      <task id="task-3" title="配置文件处理 (AC#3, #5)">
+        <subtask>在config_manager.py中查找配置加载逻辑</subtask>
+        <subtask>添加对blueprint_detail_level的忽略逻辑(如果存在)</subtask>
+        <subtask>记录警告日志提示旧配置项被忽略</subtask>
+        <subtask>测试加载包含旧配置项的文件</subtask>
+        <subtask>验证应用正常启动不报错</subtask>
+        <subtask>测试新生成的配置文件不包含该设置</subtask>
+      </task>
+      <task id="task-4" title="UI布局重新组织 (AC#1)">
+        <subtask>在config_widget.py的blueprint配置区域重新布局</subtask>
+        <subtask>移除详细程度相关的label和说明文字</subtask>
+        <subtask>调整其他控件的间距和位置</subtask>
+        <subtask>验证整体UI美观性和一致性</subtask>
+        <subtask>在不同窗口尺寸下测试布局</subtask>
+      </task>
+      <task id="task-5" title="代码清理和文档更新 (AC#3, #5)">
+        <subtask>搜索整个代码库中blueprint_detail_level的引用</subtask>
+        <subtask>移除所有相关常量、枚举或类型定义</subtask>
+        <subtask>更新相关文档字符串和注释</subtask>
+        <subtask>检查用户文档(README等)并更新说明</subtask>
+        <subtask>更新变更日志或发行说明</subtask>
+      </task>
+      <task id="task-6" title="测试和验证">
+        <subtask>单元测试: verify UI控件已移除</subtask>
+        <subtask>集成测试: verify 蓝图始终使用详细模式</subtask>
+        <subtask>回归测试: verify 旧配置文件兼容性</subtask>
+        <subtask>手动测试: 验证UI布局正常</subtask>
+        <subtask>性能测试: verify 生成质量(详细模式)</subtask>
+      </task>
+    </tasks>
+  </story>
+
+  <acceptanceCriteria>
+    <criterion id="ac-1">UI控件移除 - Given 用户在章节蓝图生成界面, When 查看所有配置控件时, Then 不应该看到详细程度选择下拉框, And UI布局应该自动调整填补空白</criterion>
+    <criterion id="ac-2">默认详细模式 - Given 用户触发蓝图生成, When 调用blueprint.py的生成函数时, Then detail_level参数应该固定为"detailed", And 不应该接受其他详细程度值</criterion>
+    <criterion id="ac-3">配置文件清理 - Given 检查配置文件config.json, When 查找blueprint_detail_level设置时, Then 不应该存在该配置项, And 如果存在旧值应该被安全移除</criterion>
+    <criterion id="ac-4">生成质量验证 - Given 使用详细模式生成蓝图, When 检查生成的内容时, Then 蓝图长度应该大于500字符, And 内容应该包含足够的细节信息, And 不应该出现"简要"或"标准"等简略内容</criterion>
+    <criterion id="ac-5">向后兼容性 - Given 加载旧版本的配置文件(包含blueprint_detail_level), When 应用启动时, Then 应该忽略该设置而不报错, And 应该使用详细模式作为默认行为</criterion>
+  </acceptanceCriteria>
+
+  <artifacts>
+    <docs>
+      <doc path="docs/sprint-artifacts/2-1-blueprint-detail-level-removal.md" type="story">Story 2.1: 章节蓝图详细程度选项移除</doc>
+      <doc path="docs/epics.md" type="epic">Epic 2: UI/UX体验优化</doc>
+      <doc path="docs/bmm-architecture-decisions-2025-11-16.md" type="architecture">架构决策文档</doc>
+    </docs>
+    <code>
+      <file path="ui_qt/widgets/generation_widget.py">
+        <snippet line="791-793" description="详细程度选择控件">
+        self.detail_level = QComboBox()
+        self.detail_level.addItems(["简要", "标准", "详细"])
+        control_layout.addRow("详细程度:", self.detail_level)
+        </snippet>
+      </file>
+      <file path="novel_generator/blueprint.py">
+        <snippet line="50-61" description="章节蓝图生成函数定义">
+def Chapter_blueprint_generate(
+    interface_format: str,
+    api_key: str,
+    base_url: str,
+    llm_model: str,
+    filepath: str,
+    number_of_chapters: int,
+    user_guidance: str = "",  # 新增参数
+    temperature: float = 0.7,
+    max_tokens: int = 4096,
+    timeout: int = 600
+) -> None:
+        </snippet>
+        <snippet line="134-148" description="单次生成逻辑">
+    if chunk_size &gt;= number_of_chapters:
+        prompt = chapter_blueprint_prompt.format(
+            novel_architecture=architecture_text,
+            number_of_chapters=number_of_chapters,
+            user_guidance=user_guidance  # 新增参数
+        )
+        blueprint_text = invoke_with_cleaning(llm_adapter, prompt)
+        if not blueprint_text.strip():
+            logging.warning("Chapter blueprint generation result is empty.")
+            return
+
+        clear_file_content(filename_dir)
+        save_string_to_txt(blueprint_text, filename_dir)
+        logging.info("Novel_directory.txt (chapter blueprint) has been generated successfully (single-shot).")
+        return
+        </snippet>
+      </file>
+      <file path="config_manager.py">
+        <snippet line="51-89" description="配置加载函数">
+def load_config(config_file: str = None) -&gt; dict:
+    """
+    从指定的 config_file 加载配置，若不存在则创建一个默认配置文件。
+    如果未指定config_file，将使用系统用户配置目录。
+    首次使用时，如果用户配置目录中不存在配置文件，将从项目目录的config.json复制过来。
+    """
+        </snippet>
+        <snippet line="93-167" description="默认配置创建函数">
+def create_config(config_file: str) -&gt; dict:
+    """创建一个创建默认配置文件。"""
+        </snippet>
+      </file>
+    </code>
+    <dependencies>
+      <package name="PySide6" version="6.8.0">Qt UI控件移除和布局调整</package>
+      <package name="json">JSON配置管理</package>
+      <package name="logging">日志记录</package>
+      <package name="threading">异步配置测试</package>
+      <package name="pathlib">跨平台路径处理</package>
+      <package name="platform">系统平台检测</package>
+    </dependencies>
+  </artifacts>
+
+  <constraints>
+    <constraint type="backward_compatibility">旧配置文件必须向后兼容，静默忽略blueprint_detail_level设置</constraint>
+    <constraint type="ui_layout">UI变更应该不影响其他配置功能，布局自动调整</constraint>
+    <constraint type="code_cleanup">移除后确保没有代码残留，包括常量、枚举、类型定义</constraint>
+    <constraint type="config_infrastructure">依赖于Epic 1的配置自动保存基础设施</constraint>
+    <constraint type="quality_assurance">生成的蓝图必须保持高质量，长度大于500字符</constraint>
+  </constraints>
+
+  <interfaces>
+    <interface name="Chapter_blueprint_generate" file="novel_generator/blueprint.py" description="章节蓝图生成函数，需要移除detail_level参数支持"/>
+    <interface name="ConfigWidget" file="ui_qt/widgets/config_widget.py" description="配置管理组件，需要更新布局"/>
+    <interface name="load_config" file="config_manager.py" description="配置加载函数，需要添加旧配置项忽略逻辑"/>
+    <interface name="save_config" file="config_manager.py" description="配置保存函数，确保不保存已移除的配置项"/>
+  </interfaces>
+
+  <tests>
+    <standards>
+      <standard>UI控件完全移除，界面布局正常</standard>
+      <standard>蓝图生成始终使用详细模式</standard>
+      <standard>旧配置文件加载不报错</standard>
+      <standard>新生成的配置文件不包含已移除项</standard>
+      <standard>生成内容质量符合要求(长度>500字符)</standard>
+    </standards>
+    <locations>
+      <location>ui_qt/widgets/generation_widget.py - 详细程度控件移除验证</location>
+      <location>novel_generator/blueprint.py - 生成逻辑固定为详细模式</location>
+      <location>config_manager.py - 配置加载兼容性测试</location>
+      <location>tests/ - 单元测试和集成测试目录</location>
+    </locations>
+    <ideas>
+      <idea>创建自动化测试验证UI控件存在性</idea>
+      <idea>模拟旧配置文件加载测试兼容性</idea>
+      <idea>验证生成内容长度和质量指标</idea>
+      <idea>测试不同分辨率下的UI布局适应性</idea>
+      <idea>性能测试确保详细模式生成效率</idea>
+    </ideas>
+  </tests>
+</story-context>

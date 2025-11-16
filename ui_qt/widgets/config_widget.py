@@ -6,6 +6,8 @@
 """
 
 import os
+import threading
+import logging
 from typing import Dict, Any, Optional
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QTabWidget,
@@ -13,7 +15,7 @@ from PySide6.QtWidgets import (
     QPushButton, QComboBox, QFormLayout, QGridLayout,
     QMessageBox, QCheckBox, QSlider, QFrame, QTextEdit
 )
-from PySide6.QtCore import Signal, Qt
+from PySide6.QtCore import Signal, Qt, QTimer
 from PySide6.QtGui import QFont
 
 from ..utils.ui_helpers import (
@@ -31,12 +33,30 @@ class ConfigWidget(QWidget):
 
     # 信号定义
     config_changed = Signal(dict)
+    auto_save_started = Signal()
+    auto_save_completed = Signal(bool)  # True表示成功，False表示失败
+    auto_save_status_changed = Signal(str, str)  # 状态类型(info/success/error), 消息内容
 
     def __init__(self, config: Dict[str, Any], parent=None):
         super().__init__(parent)
         self.config = config.copy()
+        self.original_config = config.copy()  # 保存原始配置用于比较
+        self.status_bar = None  # 状态栏引用，将在主窗口设置
+
+        # 自动保存相关属性
+        self.auto_save_timer = QTimer()
+        self.auto_save_timer.setSingleShot(True)
+        self.auto_save_timer.setInterval(2000)  # 2秒延迟
+        self.auto_save_timer.timeout.connect(self.perform_auto_save)
+
+        # 后台保存线程相关
+        self.save_thread = None
+        self.is_saving = False
+        self.pending_save = False
+
         self.setup_ui()
         self.load_current_config()
+        self.connect_change_listeners()
 
     def setup_ui(self):
         """设置UI布局"""
@@ -788,19 +808,19 @@ class ConfigWidget(QWidget):
         QTimer.singleShot(100, perform_test)
 
     def apply_config(self):
-        """应用配置"""
+        """应用配置 - 同时触发自动保存"""
         self.update_config_from_ui()
         self.config_changed.emit(self.config)
+
+        # 如果启用了自动保存，立即触发保存
+        if self.auto_save.isChecked():
+            self.force_save_config()
+
         show_info_dialog(self, "成功", "配置已应用")
 
     def save_config(self):
-        """保存配置"""
-        self.update_config_from_ui()
-        # 调用实际的保存函数
-        if save_config(self.config, None):
-            show_info_dialog(self, "成功", "配置已保存")
-        else:
-            show_error_dialog(self, "错误", "保存配置失败")
+        """保存配置 - 使用新的自动保存机制"""
+        self.force_save_config()
 
     def reset_config(self):
         """重置配置"""
@@ -913,3 +933,201 @@ class ConfigWidget(QWidget):
             tooltip_manager.add_tooltip(self.save_config_btn, "save_role")
         if hasattr(self, 'load_config_btn'):
             tooltip_manager.add_tooltip(self.load_config_btn, "load_role")
+
+    def connect_change_listeners(self):
+        """连接所有UI控件的变更监听器"""
+        # LLM配置选项卡
+        self.interface_format.currentTextChanged.connect(self.on_config_changed)
+        self.api_key.textChanged.connect(self.on_config_changed)
+        self.base_url.textChanged.connect(self.on_config_changed)
+        self.model_name.currentTextChanged.connect(self.on_config_changed)
+        self.temperature_slider.valueChanged.connect(self.on_config_changed)
+        self.max_tokens.valueChanged.connect(self.on_config_changed)
+        self.timeout.valueChanged.connect(self.on_config_changed)
+
+        # 模型选择选项卡
+        if hasattr(self, 'prompt_draft_llm'):
+            self.prompt_draft_llm.currentTextChanged.connect(self.on_config_changed)
+        if hasattr(self, 'architecture_llm'):
+            self.architecture_llm.currentTextChanged.connect(self.on_config_changed)
+        if hasattr(self, 'chapter_outline_llm'):
+            self.chapter_outline_llm.currentTextChanged.connect(self.on_config_changed)
+        if hasattr(self, 'final_chapter_llm'):
+            self.final_chapter_llm.currentTextChanged.connect(self.on_config_changed)
+        if hasattr(self, 'consistency_review_llm'):
+            self.consistency_review_llm.currentTextChanged.connect(self.on_config_changed)
+
+        # 嵌入配置选项卡
+        self.embedding_interface.currentTextChanged.connect(self.on_config_changed)
+        self.embedding_api_key.textChanged.connect(self.on_config_changed)
+        self.embedding_url.textChanged.connect(self.on_config_changed)
+        self.embedding_model.currentTextChanged.connect(self.on_config_changed)
+        self.retrieval_k.valueChanged.connect(self.on_config_changed)
+        self.chunk_size.valueChanged.connect(self.on_config_changed)
+        self.chunk_overlap.valueChanged.connect(self.on_config_changed)
+
+        # 代理配置选项卡
+        self.enable_proxy.stateChanged.connect(self.on_config_changed)
+        self.proxy_host.textChanged.connect(self.on_config_changed)
+        self.proxy_port.valueChanged.connect(self.on_config_changed)
+        self.proxy_username.textChanged.connect(self.on_config_changed)
+        self.proxy_password.textChanged.connect(self.on_config_changed)
+
+        # 高级配置选项卡
+        self.log_level.currentTextChanged.connect(self.on_config_changed)
+        self.log_file.textChanged.connect(self.on_config_changed)
+        self.max_workers.valueChanged.connect(self.on_config_changed)
+        self.request_timeout.valueChanged.connect(self.on_config_changed)
+        self.retry_count.valueChanged.connect(self.on_config_changed)
+        self.auto_save.stateChanged.connect(self.on_config_changed)
+        self.save_interval.valueChanged.connect(self.on_config_changed)
+        self.show_tooltips.stateChanged.connect(self.on_config_changed)
+
+    def on_config_changed(self):
+        """配置变更处理 - 触发自动保存定时器"""
+        # 如果自动保存功能被禁用，则直接返回
+        if not self.auto_save.isChecked():
+            return
+
+        # 停止之前的定时器（如果有）
+        if self.auto_save_timer.isActive():
+            self.auto_save_timer.stop()
+
+        # 启动新的2秒定时器
+        self.auto_save_timer.start(2000)
+
+        # 发送状态信号
+        self.auto_save_status_changed.emit("info", "配置已更改，2秒后自动保存...")
+
+        # 检查配置是否有实际变更
+        self.update_config_from_ui()
+        if self.config != self.original_config:
+            logging.debug("配置发生变更，启动自动保存定时器")
+        else:
+            logging.debug("配置无实际变更，取消自动保存")
+            self.auto_save_timer.stop()
+
+    def perform_auto_save(self):
+        """执行自动保存 - 在后台线程中"""
+        if self.is_saving:
+            # 如果正在保存，标记为待保存
+            self.pending_save = True
+            logging.debug("保存正在进行中，标记为待保存")
+            return
+
+        # 更新配置数据
+        self.update_config_from_ui()
+
+        # 检查是否有实际变更
+        if self.config == self.original_config:
+            logging.debug("配置无变更，跳过自动保存")
+            return
+
+        # 发送开始信号
+        self.auto_save_started.emit()
+        self.is_saving = True
+
+        # 在后台线程中执行保存
+        def save_in_background():
+            try:
+                # 执行保存
+                success = save_config(self.config, None)
+
+                if success:
+                    # 更新原始配置
+                    self.original_config = self.config.copy()
+                    logging.info("配置自动保存成功")
+
+                    # 发送成功信号（需要在主线程中执行）
+                    from PySide6.QtCore import QTimer
+                    QTimer.singleShot(0, lambda: self.auto_save_completed.emit(True))
+                    QTimer.singleShot(0, lambda: self.auto_save_status_changed.emit("success", "配置已自动保存"))
+                else:
+                    logging.error("配置自动保存失败")
+                    QTimer.singleShot(0, lambda: self.auto_save_completed.emit(False))
+                    QTimer.singleShot(0, lambda: self.auto_save_status_changed.emit("error", "配置保存失败，请重试"))
+
+            except Exception as e:
+                logging.error(f"自动保存配置时发生异常: {e}", exc_info=True)
+                QTimer.singleShot(0, lambda: self.auto_save_completed.emit(False))
+                QTimer.singleShot(0, lambda: self.auto_save_status_changed.emit("error", f"配置保存失败: {str(e)}"))
+
+            finally:
+                self.is_saving = False
+
+                # 检查是否有待保存的变更
+                if self.pending_save:
+                    self.pending_save = False
+                    QTimer.singleShot(100, self.perform_auto_save)  # 延迟100ms后重试
+
+        # 启动后台保存线程
+        self.save_thread = threading.Thread(target=save_in_background, daemon=True)
+        self.save_thread.start()
+
+    def set_status_bar(self, status_bar):
+        """设置状态栏引用"""
+        self.status_bar = status_bar
+        # 连接自动保存状态信号到状态栏
+        self.auto_save_status_changed.connect(self.on_auto_save_status_changed)
+
+    def on_auto_save_status_changed(self, status_type: str, message: str):
+        """处理自动保存状态变更"""
+        if self.status_bar:
+            if status_type == "info":
+                # 待保存状态 - 灰色，显示"配置已更改，2秒后自动保存..."
+                self.status_bar.set_info_state(message, auto_clear=False)  # 永久显示直到保存完成
+            elif status_type == "success":
+                # 保存成功状态 - 绿色，显示"配置已自动保存"，3秒后自动清除
+                self.status_bar.set_success_state(message)
+            elif status_type == "error":
+                # 保存错误状态 - 红色，显示"配置保存失败，请重试"，保持显示
+                self.status_bar.set_error_state(message)
+
+    def closeEvent(self, event):
+        """处理窗口关闭事件 - 确保配置保存"""
+        logging.info("配置窗口关闭，检查是否有待保存的变更")
+
+        # 停止自动保存定时器
+        if self.auto_save_timer.isActive():
+            self.auto_save_timer.stop()
+            logging.debug("已停止自动保存定时器")
+
+        # 如果有正在进行的保存，等待完成
+        if self.is_saving:
+            logging.info("等待后台保存完成...")
+            # 最多等待3秒
+            import time
+            wait_time = 0
+            while self.is_saving and wait_time < 30:  # 3秒 = 30 * 0.1秒
+                time.sleep(0.1)
+                wait_time += 1
+
+        # 检查是否有未保存的变更
+        self.update_config_from_ui()
+        if self.config != self.original_config:
+            logging.info("检测到未保存的配置变更，立即执行保存")
+
+            # 立即保存（不等待定时器）
+            try:
+                success = save_config(self.config, None)
+                if success:
+                    logging.info("关闭前配置保存成功")
+                    self.auto_save_status_changed.emit("success", "配置已保存")
+                else:
+                    logging.error("关闭前配置保存失败")
+                    self.auto_save_status_changed.emit("error", "配置保存失败")
+            except Exception as e:
+                logging.error(f"关闭前配置保存异常: {e}", exc_info=True)
+                self.auto_save_status_changed.emit("error", f"配置保存失败: {str(e)}")
+
+        # 允许关闭
+        event.accept()
+
+    def force_save_config(self):
+        """强制立即保存配置（用于手动保存按钮）"""
+        # 停止自动保存定时器
+        if self.auto_save_timer.isActive():
+            self.auto_save_timer.stop()
+
+        # 立即执行保存
+        self.perform_auto_save()

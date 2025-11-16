@@ -1,0 +1,472 @@
+<story-context id="infinitequill-2025/3-3-cross-chapter-coherence-validation" v="1.0">
+  <metadata>
+    <epicId>3</epicId>
+    <storyId>3-3</storyId>
+    <title>跨章节连贯性验证</title>
+    <status>ready-for-dev</status>
+    <generatedAt>2025-11-17</generatedAt>
+    <generator>BMAD Story Context Workflow</generator>
+    <sourceStoryPath>/home/abelxiaoxing/work/InfiniteQuill/docs/sprint-artifacts/3-3-cross-chapter-coherence-validation.md</sourceStoryPath>
+  </metadata>
+
+  <story>
+    <asA>小说创作者</asA>
+    <iWant>验证多章节生成的连贯性</iWant>
+    <soThat>确保我的小说质量达到预期</soThat>
+    <tasks>
+      <task id="1" status="pending" priority="high">情节连续性检查逻辑 (AC#1)
+        <subtask>在novel_generator/中创建coherence_checker.py模块</subtask>
+        <subtask>实现check_plot_continuity(chapter_n, chapter_n_minus_1)函数</subtask>
+        <subtask>使用LLM评估情节的自然延续性(提示词设计)</subtask>
+        <subtask>检测突兀的情节转折或跳跃</subtask>
+        <subtask>返回情节连贯度分数(0-100)和问题列表</subtask>
+        <subtask>测试已知连贯和不连贯的情节样本</subtask>
+      </task>
+
+      <task id="2" status="pending" priority="high">角色名字一致性验证 (AC#2)
+        <subtask>实现extract_character_names(chapter_text)函数(使用正则表达式)</subtask>
+        <subtask>遍历所有章节,收集每个章节中的角色名字</subtask>
+        <subtask>实现name_normalization()函数处理名字变体(如"小李"和"李明")</subtask>
+        <subtask>检测同一角色在不同章节有不同名字的情况</subtask>
+        <subtask>返回角色一致性分数(0-100)和冲突列表</subtask>
+        <subtask>与Story 3.1的角色名字验证机制集成</subtask>
+      </task>
+
+      <task id="3" status="pending" priority="high">角色特征一致性验证 (AC#3)
+        <subtask>实现extract_character_traits(chapter_text, character_name)函数</subtask>
+        <subtask>从文本中提取角色的性别、年龄、外貌、性格等特征</subtask>
+        <subtask>比较同一角色在不同章节的特征描述</subtask>
+        <subtask>使用LLM评估特征的一致性或合理演进</subtask>
+        <subtask>检测特征矛盾(如性别突变、年龄倒退)</subtask>
+        <subtask>返回特征一致性分数和问题报告</subtask>
+      </task>
+
+      <task id="4" status="pending" priority="high">故事背景和设定连贯性 (AC#4)
+        <subtask>定义故事设定的关键维度: 时代背景、世界观类型、地点等</subtask>
+        <subtask>实现extract_story_setting(chapter_text)函数</subtask>
+        <subtask>使用LLM提取每章的设定信息</subtask>
+        <subtask>比较不同章节的设定是否一致</subtask>
+        <subtask>检测世界观矛盾(如从现代突然变古代)</subtask>
+        <subtask>返回设定连贯度分数和问题列表</subtask>
+      </task>
+
+      <task id="5" status="pending" priority="medium">质量评估指标生成 (AC#5)
+        <subtask>设计量化评分算法:
+          - 情节连贯度: 基于LLM评估的平均分数
+          - 角色一致性: 一致章节数/总章节数 × 100
+          - 设定连贯度: 一致章节数/总章节数 × 100</subtask>
+        <subtask>计算总体质量分数(加权平均)</subtask>
+        <subtask>生成可视化质量报告(文本或HTML)</subtask>
+        <subtask>提供导出功能(保存为report.md)</subtask>
+      </task>
+
+      <task id="6" status="pending" priority="medium">问题定位和用户反馈 (AC#6)
+        <subtask>为每个检测到的问题生成human-readable描述</subtask>
+        <subtask>提供章节号和段落位置信息</subtask>
+        <subtask>给出具体的修复建议</subtask>
+        <subtask>在UI中创建连贯性检查报告对话框</subtask>
+        <subtask>使用StatusBar显示"正在检查章节连贯性..."和"检查完成,发现X个问题"</subtask>
+        <subtask>与Epic 1的状态反馈系统集成</subtask>
+      </task>
+
+      <task id="7" status="pending" priority="high">完整集成和端到端测试
+        <subtask>集成所有检查模块: 情节、角色名字、角色特征、设定</subtask>
+        <subtask>创建run_coherence_check(novel_project)主入口函数</subtask>
+        <subtask>测试完整小说的连贯性检查流程</subtask>
+        <subtask>与Story 3.1的名字生成和Story 3.2的上下文检索集成测试</subtask>
+        <subtask>性能测试: 检查100章小说的时间&lt;30秒</subtask>
+        <subtask>准确性测试: 与人工评估结果对比</subtask>
+      </task>
+    </tasks>
+  </story>
+
+  <acceptanceCriteria>
+    <criterion id="1" epic="AC#1">情节连续性检查 - Given 生成包含多个章节的小说时, When 检查第N章和第N-1章之间的情节, Then 第N章的情节应该自然延续第N-1章的发展, And 不应该出现情节跳跃或不合理的转折</criterion>
+    <criterion id="2" epic="AC#2">角色名字一致性验证 - Given 多章节小说已生成, When 提取所有章节中的角色名字时, Then 每个角色的名字应该在所有章节中保持一致, And 不应该出现同一角色在不同章节有不同名字的现象</criterion>
+    <criterion id="3" epic="AC#3">角色特征一致性验证 - Given 多章节小说已生成, When 检查角色的特征(如性格、外貌、背景)在章节间的描述时, Then 这些特征应该在不同章节中保持一致或合理演进, And 不应该出现特征矛盾或突变(如一个角色在上一章是男性,下一章变成女性)</criterion>
+    <criterion id="4" epic="AC#4">故事背景和设定连贯性 - Given 多章节小说已生成, When 检查不同章节中描述的世界观、时间线、地点等设定时, Then 这些设定应该在所有章节中保持一致, And 不应该出现世界观矛盾(如第一章是现代社会,第二章突然变成古代武侠)</criterion>
+    <criterion id="5" epic="AC#5">质量评估指标 - Given 完成连贯性检查后, When 生成质量报告时, Then 应该提供量化指标: 情节连贯度分数(0-100)、角色一致性分数(0-100)、设定连贯度分数(0-100), And 对于检测到的问题,应该提供具体的章节位置和问题描述</criterion>
+    <criterion id="6" epic="AC#6">问题定位和建议 - Given 检测到连贯性问题, When 向用户展示问题详情时, Then 应该明确指出问题出现在哪些章节的哪些段落, And 应该提供修复建议(如"建议检查第3章和第4章的角色名字不一致问题")</criterion>
+  </acceptanceCriteria>
+
+  <artifacts>
+    <docs>
+      <document path="/home/abelxiaoxing/work/InfiniteQuill/docs/sprint-artifacts/3-3-cross-chapter-coherence-validation.md" type="story">主故事文件，包含完整的需求描述和技术细节，是Epic 3的最终故事</document>
+      <document path="/home/abelxiaoxing/work/InfiniteQuill/docs/epics.md" type="epic">Epic 3: AI生成质量增强的源文档</document>
+      <document path="/home/abelxiaoxing/work/InfiniteQuill/docs/bmm-architecture-decisions-2025-11-16.md" type="architecture">架构决策文档，包含相关需求说明</document>
+      <document path="/home/abelxiaoxing/work/InfiniteQuill/novel_generator/CLAUDE.md" type="module">novel_generator模块文档，包含核心生成引擎的详细说明</document>
+      <document path="/home/abelxiaoxing/work/InfiniteQuill/ui_qt/CLAUDE.md" type="module">ui_qt模块文档，包含状态栏和UI组件的详细说明</document>
+      <document path="/home/abelxiaoxing/work/InfiniteQuill/docs/sprint-artifacts/stories/3-1-character-name-generation-fix.context.xml" type="story">Story 3.1上下文文件，提供角色名字一致性验证机制</document>
+      <document path="/home/abelxiaoxing/work/InfiniteQuill/docs/sprint-artifacts/stories/3-2-chapter-context-retrieval-system.context.xml" type="story">Story 3.2上下文文件，提供章节上下文检索系统</document>
+    </docs>
+
+    <code>
+      <file path="/home/abelxiaoxing/work/InfiniteQuill/novel_generator/chapter.py" type="core">
+        <description>章节内容生成核心文件，提供章节文本访问和摘要功能</description>
+        <key_functions>
+          <function name="get_last_n_chapters_text">获取最近n章的文本内容，用于连贯性分析</function>
+          <function name="summarize_recent_chapters">生成章节摘要，用于情节连续性评估</function>
+          <function name="format_chapter_info">格式化章节信息，提供结构化数据</function>
+        </key_functions>
+        <dependencies>
+          <dependency>prompt_definitions</dependency>
+          <dependency>llm_adapters</dependency>
+          <dependency>utils</dependency>
+          <dependency>novel_generator.vectorstore_utils</dependency>
+        </dependencies>
+      </file>
+
+      <file path="/home/abelxiaoxing/work/InfiniteQuill/project_manager.py" type="core">
+        <description>项目管理系统，负责项目文件访问和数据持久化</description>
+        <key_functions>
+          <function name="load_project">加载项目数据，获取所有章节文件路径</function>
+          <function name="get_project_data">获取项目元数据和设置信息</function>
+          <function name="export_project_summary">导出项目摘要信息</function>
+        </key_functions>
+        <dependencies>
+          <dependency>utils</dependency>
+          <dependency>json</dependency>
+          <dependency>datetime</dependency>
+        </dependencies>
+      </file>
+
+      <file path="/home/abelxiaoxing/work/InfiniteQuill/ui_qt/widgets/status_bar.py" type="core">
+        <description>状态栏组件，提供用户反馈和进度显示</description>
+        <key_functions>
+          <function name="show_message">显示状态消息</function>
+          <function name="set_progress">设置进度条</function>
+          <function name="set_generating">设置生成状态指示器</function>
+          <function name="set_success_state">设置成功状态显示</function>
+          <function name="set_warning_state">设置警告状态显示</function>
+          <function name="set_error_state">设置错误状态显示</function>
+        </key_functions>
+        <dependencies>
+          <dependency>PySide6</dependency>
+        </dependencies>
+      </file>
+
+      <file path="/home/abelxiaoxing/work/InfiniteQuill/novel_generator/coherence_checker.py" type="new">
+        <description>新模块：跨章节连贯性检查器，这是Story 3.3的核心实现文件</description>
+        <key_functions>
+          <function name="run_coherence_check">主入口函数，执行完整的连贯性检查</function>
+          <function name="check_plot_continuity">检查情节连续性</function>
+          <function name="extract_character_names">提取角色名字</function>
+          <function name="check_character_name_consistency">验证角色名字一致性</function>
+          <function name="extract_character_traits">提取角色特征</function>
+          <function name="check_character_trait_consistency">验证角色特征一致性</function>
+          <function name="extract_story_setting">提取故事设定</function>
+          <function name="check_story_setting_consistency">验证故事设定连贯性</function>
+          <function name="generate_quality_report">生成质量评估报告</function>
+          <function name="calculate_overall_quality_score">计算总体质量分数</function>
+        </key_functions>
+        <dependencies>
+          <dependency>langchain</dependency>
+          <dependency>llm_adapters</dependency>
+          <dependency>re</dependency>
+          <dependency>json</dependency>
+          <dependency>logging</dependency>
+        </dependencies>
+      </file>
+
+      <file path="/home/abelxiaoxing/work/InfiniteQuill/llm_adapters.py" type="support">
+        <description>LLM适配器，提供统一的LLM调用接口</description>
+        <key_functions>
+          <function name="create_llm_adapter">创建LLM适配器实例</function>
+          <function name="invoke_with_cleaning">调用LLM并清理响应</function>
+        </key_functions>
+        <dependencies>
+          <dependency>openai</dependency>
+          <dependency>langchain</dependency>
+        </dependencies>
+      </file>
+
+      <file path="/home/abelxiaoxing/work/InfiniteQuill/prompt_definitions.py" type="support">
+        <description>提示词定义文件，包含各种LLM提示词模板</description>
+        <key_functions>
+          <function name="plot_continuity_assessment_prompt">情节连续性评估提示词</function>
+          <function name="character_consistency_assessment_prompt">角色一致性评估提示词</function>
+          <function name="setting_consistency_assessment_prompt">设定连贯性评估提示词</function>
+        </key_functions>
+      </file>
+    </code>
+
+    <dependencies>
+      <package name="langchain">LLM调用和提示词管理框架，用于连贯性评估</package>
+      <package name="llm_adapters">自定义LLM适配器，提供统一的API接口</package>
+      <package name="re">Python正则表达式模块，用于角色名字提取</package>
+      <package name="json">JSON序列化，用于报告生成和数据持久化</package>
+      <package name="logging">日志记录模块，用于错误跟踪和调试</package>
+      <package name="difflib">Python文本相似度计算库，用于内容对比</package>
+      <package name="numpy">数值计算库，用于质量分数计算</package>
+      <package name="datetime">日期时间处理，用于报告时间戳</package>
+      <package name="os">操作系统接口，用于文件路径操作</package>
+      <package name="typing">类型注解支持，提高代码可读性</package>
+    </dependencies>
+  </artifacts>
+
+  <quality_scoring>
+    <metrics>
+      <metric name="plot_continuity" type="score" range="0-100" weight="0.4">
+        <description>情节连贯度分数，基于LLM对相邻章节情节连续性的评估</description>
+        <calculation>对所有相邻章节对(chapter_n-1, chapter_n)调用LLM评估，取平均分</calculation>
+      </metric>
+      <metric name="character_consistency" type="percentage" range="0-100" weight="0.3">
+        <description>角色一致性分数，基于角色名字和特征的一致性</description>
+        <calculation>一致角色数 / 总角色数 × 100</calculation>
+      </metric>
+      <metric name="setting_consistency" type="percentage" range="0-100" weight="0.3">
+        <description>设定连贯度分数，基于故事世界设定的一致性</description>
+        <calculation>一致设定章节数 / 总章节数 × 100</calculation>
+      </metric>
+    </metrics>
+    <algorithm>
+      <overall_score_calculation>
+        overall_quality = (plot_continuity × 0.4 + character_consistency × 0.3 + setting_consistency × 0.3)
+      </overall_score_calculation>
+      <grade_interpretation>
+        <grade range="90-100" meaning="优秀" color="green">小说连贯性极佳，几乎没有问题</grade>
+        <grade range="80-89" meaning="良好" color="lightgreen">小说连贯性好，有少量可改进之处</grade>
+        <grade range="70-79" meaning="一般" color="yellow">小说连贯性一般，需要关注一些问题</grade>
+        <grade range="60-69" meaning="较差" color="orange">小说连贯性较差，需要重点修改</grade>
+        <grade range="0-59" meaning="很差" color="red">小说连贯性很差，需要大幅重写</grade>
+      </grade_interpretation>
+    </algorithm>
+  </quality_scoring>
+
+  <constraints>
+    <pattern>必须保持与现有生成流程的兼容性，不阻塞正常生成</pattern>
+    <pattern>检查过程应该是只读的，不应该修改原始章节内容</pattern>
+    <pattern>检查结果应该可导出和持久化，支持后续分析</pattern>
+    <pattern>检查应该是可选操作，不阻塞正常生成流程</pattern>
+    <pattern>LLM评估调用需要控制token消耗，平衡成本和效果</pattern>
+    <pattern>遵循混合评估策略：规则检查优先，LLM深度检查补充</pattern>
+    <pattern>性能目标：100章小说的检查时间&lt;30秒</pattern>
+    <pattern>准确性目标：与人工评估结果对比，准确率&gt;80%</pattern>
+    <pattern>支持增量更新：只检查新添加或修改的章节</pattern>
+    <pattern>缓存策略：缓存LLM评估结果，避免重复评估</pattern>
+    <pattern>错误处理：遵循Epic 1的错误处理模式</pattern>
+    <pattern>用户反馈：通过状态栏提供实时进度反馈</pattern>
+  </constraints>
+
+  <interfaces>
+    <api name="run_coherence_check" location="novel_generator/coherence_checker.py">
+      <description>执行完整连贯性检查的主入口函数</description>
+      <parameters>
+        <parameter name="project_path" type="str">小说项目路径</parameter>
+        <parameter name="llm_config" type="dict">LLM配置信息</parameter>
+        <parameter name="check_options" type="dict">检查选项(可选)</parameter>
+      </parameters>
+      <returns type="dict">检查结果报告，包含分数和问题列表</returns>
+    </api>
+
+    <api name="check_plot_continuity" location="novel_generator/coherence_checker.py">
+      <description>检查相邻章节间的情节连续性</description>
+      <parameters>
+        <parameter name="chapter_n_text" type="str">第N章文本</parameter>
+        <parameter name="chapter_n_minus_1_text" type="str">第N-1章文本</parameter>
+        <parameter name="llm_adapter" type="object">LLM适配器实例</parameter>
+      </parameters>
+      <returns type="tuple">(score, issues_list) 分数和问题列表</returns>
+    </api>
+
+    <api name="extract_character_names" location="novel_generator/coherence_checker.py">
+      <description>从章节文本中提取角色名字</description>
+      <parameters>
+        <parameter name="chapter_text" type="str">章节文本</parameter>
+      </parameters>
+      <returns type="list">角色名字列表</returns>
+    </api>
+
+    <api name="check_character_consistency" location="novel_generator/coherence_checker.py">
+      <description>检查角色名字和特征的一致性</description>
+      <parameters>
+        <parameter name="chapters_data" type="list">所有章节数据</parameter>
+        <parameter name="character_registry" type="dict">角色注册表(来自Story 3.1)</parameter>
+      </parameters>
+      <returns type="tuple">(consistency_score, conflicts_list)</returns>
+    </api>
+
+    <api name="generate_quality_report" location="novel_generator/coherence_checker.py">
+      <description>生成详细的连贯性检查报告</description>
+      <parameters>
+        <parameter name="check_results" type="dict">各项检查结果</parameter>
+        <parameter name="report_format" type="str">报告格式("text"或"html")</parameter>
+      </parameters>
+      <returns type="str">格式化报告内容</returns>
+    </api>
+  </interfaces>
+
+  <tests>
+    <standards>
+      <standard>所有连贯性检查必须通过预定义的测试用例验证</standard>
+      <standard>情节连续性检查的准确率必须&gt;80%</standard>
+      <standard>角色名字一致性检测的召回率必须&gt;90%</standard>
+      <standard>角色特征一致性验证的准确率必须&gt;85%</standard>
+      <standard>故事设定连贯性检测的准确率必须&gt;80%</standard>
+      <standard>整体质量评估必须在30秒内完成(100章小说)</standard>
+      <standard>错误处理必须覆盖所有边界情况</standard>
+      <standard>用户界面反馈必须清晰明确</standard>
+      <standard>报告生成必须格式规范且易读</standard>
+      <standard>与Story 3.1和3.2的集成必须无缝工作</standard>
+    </standards>
+
+    <locations>
+      <location path="/home/abelxiaoxing/work/InfiniteQuill/tests/test_coherence_checker.py">连贯性检查器单元测试</location>
+      <location path="/home/abelxiaoxing/work/InfiniteQuill/tests/test_plot_continuity.py">情节连续性检查测试</location>
+      <location path="/home/abelxiaoxing/work/InfiniteQuill/tests/test_character_consistency.py">角色一致性检查测试</location>
+      <location path="/home/abelxiaoxing/work/InfiniteQuill/tests/test_setting_consistency.py">设定连贯性检查测试</location>
+      <location path="/home/abelxiaoxing/work/InfiniteQuill/tests/test_quality_scoring.py">质量评分算法测试</location>
+      <location path="/home/abelxiaoxing/work/InfiniteQuill/tests/test_integration_epic3.py">Epic 3整体集成测试</location>
+      <location path="/home/abelxiaoxing/work/InfiniteQuill/app.log">应用程序日志文件</location>
+    </locations>
+
+    <ideas>
+      <test_idea>创建测试小说数据集：包含已知的连贯和不连贯案例</test_idea>
+      <test_idea>测试情节连续性：准备有明显跳跃和平滑过渡的章节对</test_idea>
+      <test_idea>测试角色名字一致性：模拟同一角色在不同章节有不同名字的情况</test_idea>
+      <test_idea>测试角色特征一致性：模拟性别、年龄、外貌特征矛盾的情况</test_idea>
+      <test_idea>测试设定连贯性：模拟世界观、时代背景不一致的情况</test_idea>
+      <test_idea>测试质量评分算法：验证分数计算的准确性和合理性</test_idea>
+      <test_idea>测试报告生成：验证报告格式的完整性和可读性</test_idea>
+      <test_idea>测试性能指标：验证100章小说的检查时间&lt;30秒</test_idea>
+      <test_idea>测试错误处理：模拟LLM调用失败、文件读取错误等情况</test_idea>
+      <test_idea>测试UI反馈：验证状态栏消息和进度显示的正确性</test_idea>
+      <test_idea>测试与Story 3.1集成：验证角色名字一致性机制的协同工作</test_idea>
+      <test_idea>测试与Story 3.2集成：验证上下文检索系统的协同工作</test_idea>
+      <test_idea>测试人工评估对比：与专业编辑的评估结果进行准确性对比</test_idea>
+      <test_idea>测试缓存机制：验证LLM评估结果的缓存和复用</test_idea>
+      <test_idea>测试增量更新：只检查新章节时的性能和准确性</test_idea>
+    </ideas>
+  </tests>
+
+  <issue_reporting>
+    <format_template>
+# 小说连贯性检查报告
+
+**检查时间**: {timestamp}
+**小说项目**: {project_name}
+**总章节数**: {total_chapters}
+**总体质量分数**: {overall_score}/100 ({grade})
+
+## 📊 质量评估摘要
+
+### 情节连贯度: {plot_score}/100 {plot_status}
+{plot_details}
+
+### 角色一致性: {character_score}/100 {character_status}
+{character_details}
+
+### 设定连贯度: {setting_score}/100 {setting_status}
+{setting_details}
+
+## 🔍 发现的问题
+
+{issues_list}
+
+## 💡 修复建议
+
+{suggestions}
+
+## 📈 改进建议
+
+{improvements}
+    </format_template>
+
+    <example_issue>
+**问题类型**: 角色名字不一致
+**严重程度**: 中等
+**影响章节**: 第3章、第5章
+**问题描述**: 同一角色在第3章中名为"李明"，但在第5章中被称为"李晓明"
+**具体位置**:
+- 第3章第2段: "李明走在回家的路上..."
+- 第5章第1段: "李晓明决定离开这个城市..."
+**修复建议**: 检查并统一角色名字，确保全文一致性
+**自动修复**: 建议将第5章的"李晓明"改为"李明"
+    </example_issue>
+  </issue_reporting>
+
+  <integration>
+    <references>
+      <reference story="3-1" file="/home/abelxiaoxing/work/InfiniteQuill/docs/sprint-artifacts/stories/3-1-character-name-generation-fix.context.xml">
+        <dependency>角色名字验证机制</dependency>
+        <dependency>CharacterNameRegistry注册表系统</dependency>
+        <dependency>名字标准化和一致性检查逻辑</dependency>
+        <integration_pattern>
+# Story 3.1集成示例
+character_registry = story_3_1_name_registry
+normalized_names = story_3_1_normalize_names(character_names)
+validation_results = story_3_1_validate_names(normalized_names)
+        </integration_pattern>
+      </reference>
+
+      <reference story="3-2" file="/home/abelxiaoxing/work/InfiniteQuill/docs/sprint-artifacts/stories/3-2-chapter-context-retrieval-system.context.xml">
+        <dependency>ChromaDB向量存储系统</dependency>
+        <dependency>章节上下文检索机制</dependency>
+        <dependency>语义相似度匹配算法</dependency>
+        <integration_pattern>
+# Story 3.2集成示例
+chapter_context = story_3_2_retrieve_context(previous_chapter)
+semantic_similarity = story_3_2_calculate_similarity(chapter_content)
+vector_store = story_3_2_get_vector_store()
+        </integration_pattern>
+      </reference>
+
+      <reference story="1-3" file="/home/abelxiaoxing/work/InfiniteQuill/docs/sprint-artifacts/stories/1-3-auto-save-status-feedback-system.context.xml">
+        <dependency>状态反馈系统</dependency>
+        <dependency>进度条和状态栏消息机制</dependency>
+        <dependency>错误处理和用户通知系统</dependency>
+        <integration_pattern>
+# Epic 1状态反馈集成
+status_bar.show_message("正在检查章节连贯性...")
+status_bar.set_progress(current_chapter, total_chapters)
+status_bar.set_success_state(f"检查完成，发现{issue_count}个问题")
+        </integration_pattern>
+      </reference>
+    </references>
+
+    <end_to_end_workflow>
+# Epic 3完整质量验证流程
+1. Story 3.1: 角色名字生成和验证
+   - 生成合理的角色名字
+   - 验证名字与特征一致性
+   - 维护跨章节名字一致性
+
+2. Story 3.2: 章节上下文检索
+   - 向量存储章节内容
+   - 语义检索相关上下文
+   - 确保新章节与前文连贯
+
+3. Story 3.3: 跨章节连贯性验证
+   - 检查情节连续性
+   - 验证角色一致性
+   - 评估设定连贯性
+   - 生成质量报告
+
+# 最终输出：完整质量验证体系
+- 生成前：名字合理性验证
+- 生成中：上下文连贯性增强
+- 生成后：整体连贯性验证
+- 质量报告：量化评估和改进建议
+    </end_to_end_workflow>
+
+    <project_completion>
+# 项目完成里程碑
+🎯 Epic 3: AI生成质量增强 - COMPLETED
+├── Story 3.1: 角色名字生成错误修复 ✅
+├── Story 3.2: 章节上下文检索系统 ✅
+└── Story 3.3: 跨章节连贯性验证 ✅
+
+# 质量验证体系建立
+✅ 名字合理性验证机制
+✅ 上下文连贯性增强
+✅ 跨章节连贯性验证
+✅ 量化质量评估系统
+✅ 用户友好的问题报告
+
+# 标志着
+🎉 从生成到验证的完整AI小说创作流程建立
+🎉 10个用户故事全部完成
+🎉 项目主要目标达成
+    </project_completion>
+  </integration>
+</story-context>

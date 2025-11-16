@@ -1,0 +1,358 @@
+<story-context id="2-3-ui-theme-consistency-validation" v="1.0">
+  <metadata>
+    <epicId>2</epicId>
+    <storyId>2-3</storyId>
+    <title>UI主题一致性验证</title>
+    <status>ready-for-dev</status>
+    <generatedAt>2025-11-17T02:00:00Z</generatedAt>
+    <generator>BMAD Story Context Workflow</generator>
+    <sourceStoryPath>/home/abelxiaoxing/work/InfiniteQuill/docs/sprint-artifacts/2-3-ui-theme-consistency-validation.md</sourceStoryPath>
+  </metadata>
+
+  <story>
+    <asA>最终用户</asA>
+    <iWant>所有UI元素在主题切换时保持一致</iWant>
+    <soThat>获得统一的视觉体验</soThat>
+    <tasks>
+      <task id="1" name="theme_manager.py验证" status="pending">
+        <subtask>在theme_manager.py中查找load_theme()或apply_theme()方法</subtask>
+        <subtask>验证QSS文件路径的正确性</subtask>
+        <subtask>检查文件存在性验证逻辑</subtask>
+        <subtask>测试文件加载错误处理</subtask>
+        <subtask>验证QApplication.setStyleSheet()调用</subtask>
+      </task>
+      <task id="2" name="角色列表控件验证" status="pending">
+        <subtask>在role_manager.py中确认角色列表控件类型(QListWidget/QTableView)</subtask>
+        <subtask>验证控件是否正确应用主题样式</subtask>
+        <subtask>检查控件是否响应主题切换信号</subtask>
+        <subtask>测试主题切换后重新渲染效果</subtask>
+        <subtask>验证选中项样式不受主题切换影响</subtask>
+      </task>
+      <task id="3" name="全应用UI组件主题验证" status="pending">
+        <subtask>创建UI组件检查清单(所有主要Widget)</subtask>
+        <subtask>测试主窗口(MainWindow)主题应用</subtask>
+        <subtask>测试配置对话框(ConfigWidget)主题应用</subtask>
+        <subtask>测试角色管理器(RoleManager)主题应用</subtask>
+        <subtask>测试章节编辑器(ChapterEditor)主题应用</subtask>
+        <subtask>测试生成器(GenerationWidget)主题应用</subtask>
+        <subtask>记录每个组件的主题应用状态</subtask>
+      </task>
+      <task id="4" name="样式冲突检测和修复" status="pending">
+        <subtask>检查文字颜色和背景色组合</subtask>
+        <subtask>验证所有文字在不同背景下可见</subtask>
+        <subtask>检查边框和分隔线样式</subtask>
+        <subtask>检查图标和图像显示</subtask>
+        <subtask>检查间距和布局是否正确</subtask>
+        <subtask>修复发现的任何样式冲突</subtask>
+      </task>
+      <task id="5" name="主题切换体验优化" status="pending">
+        <subtask>在主题切换菜单中添加状态反馈</subtask>
+        <subtask>实现实时主题切换(无需重启)</subtask>
+        <subtask>优化切换性能(避免闪烁)</subtask>
+        <subtask>在状态栏显示切换确认消息</subtask>
+        <subtask>测试快速多次切换的稳定性</subtask>
+      </task>
+      <task id="6" name="回归测试和文档更新" status="pending">
+        <subtask>创建主题一致性测试用例集</subtask>
+        <subtask>在暗色和浅色模式下分别截图对比</subtask>
+        <subtask>测试极端情况(快速切换、大量组件)</subtask>
+        <subtask>更新UI开发文档(主题开发指南)</subtask>
+        <subtask>代码审查和重构(如有需要)</subtask>
+      </task>
+    </tasks>
+  </story>
+
+  <acceptanceCriteria>
+    <criterion id="1" name="主题切换完整性">
+      Given 应用从浅色模式切换到暗色模式, When 检查所有UI组件时, Then 所有组件(按钮、输入框、列表、菜单等)应该正确应用暗色主题样式, And 不应该有任何组件仍显示浅色样式
+    </criterion>
+    <criterion id="2" name="角色列表主题协调">
+      Given 暗色模式已应用, When 查看角色管理器中的角色列表时, Then 角色列表的选中项颜色(Story 2.2中设置的#3a3a3a背景)应该与其他暗色UI元素(工具栏、按钮、菜单等)协调一致, And 整体视觉风格应该统一
+    </criterion>
+    <criterion id="3" name="样式冲突检测">
+      Given 主题切换完成, When 查看整个应用界面时, Then 不应该存在样式冲突(如文字颜色与背景色相同导致不可见), And 不应该出现视觉异常(如边框错位、间距混乱、图标显示异常)
+    </criterion>
+    <criterion id="4" name="主题加载可靠性">
+      Given 应用启动或主题切换时, When theme_manager.py加载样式文件时, Then 应该成功加载material_dark.qss或material_light.qss, And 不应该出现加载失败或文件不存在错误
+    </criterion>
+    <criterion id="5" name="动态主题切换平滑性">
+      Given 用户在应用运行时切换主题, When 从菜单或设置中切换主题时, Then 所有UI组件应该立即更新样式, And 切换过程应该平滑无闪烁, And 状态栏应该显示"主题已切换到暗色模式"或类似反馈消息
+    </criterion>
+  </acceptanceCriteria>
+
+  <artifacts>
+    <docs>
+      <doc path="ui_qt/CLAUDE.md" type="module_documentation">PySide6现代化UI模块完整文档</doc>
+      <doc path="docs/epics.md" type="epic_source">Epic 2: UI/UX体验优化来源文档</doc>
+      <doc path="docs/bmm-architecture-decisions-2025-11-16.md" type="architecture_decision">架构决策文档</doc>
+    </docs>
+    <code>
+      <file path="ui_qt/utils/theme_manager.py" type="core" description="主题加载和管理核心类">
+        <class name="ThemeManager" description="负责应用程序的主题切换和样式管理">
+          <method name="load_qss_file" description="加载QSS样式文件，支持缓存机制">
+            <code>
+def load_qss_file(self, theme_name: str) -> str:
+    """加载QSS样式文件"""
+    if theme_name in self.theme_cache:
+        return self.theme_cache[theme_name]
+
+    # 样式文件路径
+    style_dir = os.path.join(os.path.dirname(__file__), "..", "styles")
+    qss_file = os.path.join(style_dir, f"{theme_name}.qss")
+
+    if os.path.exists(qss_file):
+        with open(qss_file, 'r', encoding='utf-8') as f:
+            qss_content = f.read()
+            self.theme_cache[theme_name] = qss_content
+            return qss_content
+    else:
+        # 如果样式文件不存在，返回默认样式
+        return self.get_default_style(theme_name)
+          </code>
+          </method>
+          <method name="apply_theme" description="应用主题到指定窗口">
+            <code>
+def apply_theme(self, window, theme_name: str):
+    """应用主题到指定窗口"""
+    app = QApplication.instance()
+    if app:
+        qss_content = self.load_qss_file(theme_name)
+        app.setStyleSheet(qss_content)
+        self.current_theme = theme_name
+        window.current_theme = theme_name
+          </code>
+          </method>
+          <method name="get_dark_theme" description="内置暗色主题样式定义(1100+行)">
+            <highlight>包含完整的Material Design暗色主题样式，覆盖所有主要UI组件</highlight>
+          </method>
+          <method name="get_light_theme" description="内置浅色主题样式定义(550+行)">
+            <highlight>包含完整的Material Design浅色主题样式，覆盖所有主要UI组件</highlight>
+          </method>
+        </class>
+      </file>
+      <file path="ui_qt/widgets/role_manager.py" type="widget" description="角色管理组件，包含QListWidget角色列表">
+        <class name="RoleManager" description="角色管理组件">
+          <component name="role_list" type="QListWidget" objectName="RoleListWidget">
+            <custom_style>
+QListWidget#RoleListWidget {
+    border: none;
+    background-color: transparent;
+    outline: none;
+}
+QListWidget#RoleListWidget::item {
+    padding: 12px;
+    border-bottom: 1px solid #e0e0e0;
+    margin: 0px;
+}
+QListWidget#RoleListWidget::item:hover {
+    background-color: #f5f5f5;
+}
+QListWidget#RoleListWidget::item:selected {
+    background-color: #e3f2fd;
+    border-left: 4px solid #1976d2;
+}
+            </custom_style>
+          </component>
+        </class>
+      </file>
+      <file path="ui_qt/main_window.py" type="core" description="主窗口控制器，包含主题切换逻辑">
+        <method name="change_theme" description="更改主题并更新UI">
+          <code>
+def change_theme(self, theme_name: str):
+    """更改主题"""
+    self.config["theme"] = theme_name
+
+    # 同时更新theme_settings中的current_theme，确保配置一致性
+    if "theme_settings" not in self.config:
+        self.config["theme_settings"] = {}
+    self.config["theme_settings"]["current_theme"] = theme_name
+
+    self.apply_theme()
+
+    # 更新章节编辑器的主题样式
+    if hasattr(self, 'chapter_editor'):
+        self.chapter_editor.update_theme_styles()
+
+    # 更新状态栏的主题显示
+    if hasattr(self, 'status_bar'):
+        self.status_bar.update_theme_display(theme_name)
+
+    self.save_config()
+    self.status_bar.show_message(f"主题已切换到: {theme_name}", 3000)
+          </code>
+        </method>
+        <method name="apply_theme" description="应用主题到主窗口">
+          <code>
+def apply_theme(self):
+    """应用主题"""
+    theme_name = self.config.get("theme", "light")
+    self.theme_manager.apply_theme(self, theme_name)
+    # 不再需要update_component_themes，所有样式都通过ThemeManager管理
+          </code>
+        </method>
+      </file>
+      <file path="ui_qt/widgets/config_widget.py" type="widget" description="配置管理组件">
+        <highlight>包含大量输入控件(QLineEdit, QComboBox, QTextEdit等)，需要验证主题应用</highlight>
+      </file>
+      <file path="ui_qt/widgets/generation_widget.py" type="widget" description="生成操作组件">
+        <highlight>包含按钮、进度条、文本区域等UI元素，需要验证主题一致性</highlight>
+      </file>
+      <file path="ui_qt/widgets/chapter_editor.py" type="widget" description="章节编辑器组件">
+        <method name="update_theme_styles" description="更新章节编辑器主题样式">
+          <highlight>需要确保此方法正确响应主题切换事件</highlight>
+        </method>
+      </file>
+      <file path="ui_qt/widgets/status_bar.py" type="widget" description="状态栏组件">
+        <method name="update_theme_display" description="更新状态栏主题显示">
+          <highlight>需要验证状态栏在主题切换时的表现</highlight>
+        </method>
+      </file>
+    </code>
+    <dependencies>
+      <package name="PySide6" version="6.8.0" description="Qt应用框架，提供完整的UI组件库">
+        <components>
+          <component>QApplication</component>
+          <component>QMainWindow</component>
+          <component>QWidget</component>
+          <component>QListWidget</component>
+          <component>QPushButton</component>
+          <component>QLineEdit</component>
+          <component>QTextEdit</component>
+          <component>QComboBox</component>
+          <component>QTabWidget</component>
+          <component>QStatusBar</component>
+          <component>QMenuBar</component>
+          <component>QSplitter</component>
+          <component>QGroupBox</component>
+          <component>QProgressBar</component>
+          <component>QScrollBar</component>
+          <component>QFrame</component>
+          <component>QLabel</component>
+        </components>
+      </package>
+      <package name="os" type="standard_library" description="文件系统操作，用于QSS文件路径处理"/>
+      <package name="logging" type="standard_library" description="日志记录，用于主题加载错误追踪"/>
+    </dependencies>
+  </artifacts>
+
+  <constraints>
+    <constraint type="technical" priority="high">必须支持运行时主题切换(无需重启应用)</constraint>
+    <constraint type="technical" priority="high">保持与浅色主题样式完全隔离，避免样式污染</constraint>
+    <constraint type="technical" priority="medium">确保所有自定义QSS规则正确加载和应用</constraint>
+    <constraint type="technical" priority="medium">主题切换后组件需要调用unpolish()和polish()以应用新样式</constraint>
+    <constraint type="technical" priority="low">支持QFileSystemWatcher监控样式文件变更(可选)</constraint>
+    <constraint type="design" priority="high">遵循Material Design设计规范</constraint>
+    <constraint type="design" priority="medium">颜色层次: 背景色 < 控件色 < 选中色 < 文字色</constraint>
+    <constraint type="accessibility" priority="high">文字与背景对比度≥4.5:1</constraint>
+    <constraint type="performance" priority="medium">主题切换过程平滑无闪烁</constraint>
+    <constraint type="cross_platform" priority="medium">支持Windows、macOS、Linux平台</constraint>
+  </constraints>
+
+  <interfaces>
+    <interface name="ThemeManager" type="class" file="ui_qt/utils/theme_manager.py">
+      <method name="apply_theme" description="应用主题到应用实例">
+        <signature>apply_theme(self, window, theme_name: str) -> None</signature>
+        <usage>self.theme_manager.apply_theme(self, theme_name)</usage>
+      </method>
+      <method name="load_qss_file" description="加载QSS样式文件">
+        <signature>load_qss_file(self, theme_name: str) -> str</signature>
+        <usage>qss_content = self.theme_manager.load_qss_file("dark")</usage>
+      </method>
+      <method name="get_color" description="获取主题对应的颜色值">
+        <signature>get_color(self, theme_name: str, color_type: str) -> str</signature>
+        <usage>bg_color = self.theme_manager.get_color("dark", "light_bg")</usage>
+      </method>
+    </interface>
+    <interface name="QApplication.setStyleSheet" type="qt_method" description="全局样式表设置">
+      <signature>QApplication.instance().setStyleSheet(qss_content: str)</signature>
+      <usage>应用全局QSS样式到所有UI组件</usage>
+    </interface>
+    <interface name="QWidget.style()" type="qt_method" description="组件样式对象访问">
+      <signature>widget.style().unpolish(widget); widget.style().polish(widget)</signature>
+      <usage>强制组件重新应用样式</usage>
+    </interface>
+  </interfaces>
+
+  <tests>
+    <standards>
+      <standard>所有UI组件必须在主题切换后立即更新样式</standard>
+      <standard>主题切换过程不得出现可见的闪烁或延迟</standard>
+      <standard>样式文件加载失败时必须有优雅的错误处理</standard>
+      <standard>自定义Widget必须正确处理StyleChange事件</standard>
+      <standard>所有文字在不同主题下必须保持可读性</standard>
+      <standard>角色列表选中项样式必须与整体主题协调</standard>
+    </standards>
+    <locations>
+      <location>ui_qt/utils/theme_manager.py - 主题加载逻辑测试</location>
+      <location>ui_qt/widgets/role_manager.py - 角色列表主题应用测试</location>
+      <location>ui_qt/main_window.py - 主题切换菜单功能测试</location>
+      <location>所有widget组件 - 主题一致性验证</location>
+    </locations>
+    <ideas>
+      <test_idea>创建自动化测试脚本，循环切换主题并截图对比</test_idea>
+      <test_idea>模拟QSS文件缺失场景，验证错误处理机制</test_idea>
+      <test_idea>测试快速连续切换主题的稳定性</test_idea>
+      <test_idea>验证所有自定义样式选择器的主题适配性</test_idea>
+      <test_idea>测试不同操作系统下的主题显示一致性</test_idea>
+      <test_idea>创建UI组件主题检查清单，逐项验证</test_idea>
+    </ideas>
+  </tests>
+
+  <testChecklist>
+    <component name="主窗口和菜单栏" type="QMainWindow/QMenuBar" priority="high">
+      <check>窗口背景色正确应用</check>
+      <check>菜单栏背景色和文字颜色</check>
+      <check>菜单项悬停和选中状态</check>
+    </component>
+    <component name="工具栏按钮" type="QPushButton" priority="high">
+      <check>按钮背景色和边框</check>
+      <check>按钮悬停、按下、禁用状态</check>
+      <check>按钮文字颜色对比度</check>
+    </component>
+    <component name="配置面板" type="QLineEdit/QComboBox/QTextEdit" priority="high">
+      <check>输入框背景和边框颜色</check>
+      <check>文字颜色与背景对比</check>
+      <check>焦点状态样式</check>
+    </component>
+    <component name="角色列表" type="QListWidget" priority="high" objectName="RoleListWidget">
+      <check>列表项背景色(#3a3a3a在暗色模式)</check>
+      <check>选中项样式与整体协调</check>
+      <check>悬停状态样式</check>
+      <check>边框和分隔线样式</check>
+    </component>
+    <component name="角色编辑器" type="QTextEdit/QLineEdit/QComboBox" priority="medium">
+      <check>所有输入控件主题一致性</check>
+      <check>标签页样式</check>
+      <check>分组框样式</check>
+    </component>
+    <component name="章节编辑器" type="QTextEdit/QTabWidget" priority="medium">
+      <check>富文本编辑器样式</check>
+      <check>编辑器工具栏按钮</check>
+      <check>预览区域样式</check>
+    </component>
+    <component name="生成器控制面板" type="QPushButton/QProgressBar/QGroupBox" priority="medium">
+      <check>生成按钮样式</check>
+      <check>进度条颜色和背景</check>
+      <check>参数输入区域样式</check>
+    </component>
+    <component name="状态栏" type="QStatusBar" priority="high">
+      <check>状态栏背景色和边框</check>
+      <check>状态文字颜色</check>
+      <check>主题切换反馈消息显示</check>
+    </component>
+    <component name="对话框" type="QMessageBox/QDialog" priority="medium">
+      <check>对话框背景色</check>
+      <check>按钮样式一致性</check>
+      <check>文字颜色可读性</check>
+    </component>
+    <component name="滚动条" type="QScrollBar" priority="low">
+      <check>滚动条滑块颜色</check>
+      <check>滚动条轨道背景</check>
+      <check>悬停状态样式</check>
+    </component>
+    <component name="分隔线" type="QFrame" priority="low">
+      <check>分隔线颜色</check>
+      <check>分隔线粗细和样式</check>
+    </component>
+  </testChecklist>
+</story-context>

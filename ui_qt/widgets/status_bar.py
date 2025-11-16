@@ -236,11 +236,12 @@ class StatusBar(QStatusBar):
         self.status_label.setStyleSheet("")
         self.clear_message()
 
-    def set_success_state(self, message: str):
+    def set_success_state(self, message: str, auto_clear: bool = True):
         """设置成功状态
 
         Args:
             message: 成功消息
+            auto_clear: 是否自动清除（默认True，3秒后清除）
         """
         self.status_label.setText(message)
         self.status_label.setStyleSheet("""
@@ -250,11 +251,36 @@ class StatusBar(QStatusBar):
             }
         """)
 
-        # 3秒后恢复正常样式
-        QTimer.singleShot(3000, self.clear_success_state)
+        # 3秒后恢复正常样式（如果启用了自动清除）
+        if auto_clear:
+            QTimer.singleShot(3000, self.clear_success_state)
 
     def clear_success_state(self):
         """清除成功状态"""
+        self.status_label.setStyleSheet("")
+        self.clear_message()
+
+    def set_info_state(self, message: str, auto_clear: bool = False):
+        """设置信息状态（用于自动保存待处理状态）
+
+        Args:
+            message: 信息消息
+            auto_clear: 是否自动清除（默认False，永久显示）
+        """
+        self.status_label.setText(message)
+        self.status_label.setStyleSheet("""
+            QLabel {
+                color: #666666;
+                font-weight: normal;
+            }
+        """)
+
+        # 如果启用了自动清除，指定时间后恢复正常样式
+        if auto_clear:
+            QTimer.singleShot(auto_clear if isinstance(auto_clear, int) else 3000, self.clear_info_state)
+
+    def clear_info_state(self):
+        """清除信息状态"""
         self.status_label.setStyleSheet("")
         self.clear_message()
 

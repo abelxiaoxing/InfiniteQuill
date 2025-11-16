@@ -1,0 +1,300 @@
+<story-context id="infinitequill-2025/3-1-character-name-generation-fix" v="1.0">
+  <metadata>
+    <epicId>3</epicId>
+    <storyId>3-1</storyId>
+    <title>主角名字生成错误修复</title>
+    <status>ready-for-dev</status>
+    <generatedAt>2025-11-17</generatedAt>
+    <generator>BMAD Story Context Workflow</generator>
+    <sourceStoryPath>/home/abelxiaoxing/work/InfiniteQuill/docs/sprint-artifacts/3-1-character-name-generation-fix.md</sourceStoryPath>
+  </metadata>
+
+  <story>
+    <asA>小说创作者</asA>
+    <iWant>AI生成的主角名字准确且一致</iWant>
+    <soThat>我的小说角色有可信赖的标识</soThat>
+    <tasks>
+      <task id="1" status="pending" priority="high">Prompt模板审查和优化
+        <subtask>在prompt_definitions.py中查找角色生成提示词模板</subtask>
+        <subtask>审查当前提示词的结构和参数</subtask>
+        <subtask>优化提示词使其明确要求合理名字格式</subtask>
+        <subtask>添加角色特征参数(性别、年龄、文化背景)</subtask>
+        <subtask>测试不同提示词版本的名字生成质量</subtask>
+        <subtask>选择最优提示词模板</subtask>
+      </task>
+
+      <task id="2" status="pending" priority="high">名字验证逻辑实现
+        <subtask>在novel_generator/chapter.py中创建validate_character_name()函数</subtask>
+        <subtask>实现字符有效性检查(正则表达式: ^[\u4e00-\u9fa5a-zA-Z\s]+$)</subtask>
+        <subtask>实现长度验证(最小2字符,最大20字符)</subtask>
+        <subtask>实现乱码检测(检查Unicode范围)</subtask>
+        <subtask>实现不合理字符过滤(数字、特殊符号等)</subtask>
+        <subtask>添加测试用例验证验证逻辑</subtask>
+      </task>
+
+      <task id="3" status="pending" priority="medium">角色特征一致性检查
+        <subtask>创建check_name_consistency(name, traits)函数</subtask>
+        <subtask>实现性别特征一致性检查(如男性名字不包含'娜'、'丽'等女性化字)</subtask>
+        <subtask>实现文化背景一致性检查(如东方角色有东方风格名字)</subtask>
+        <subtask>实现名字年龄一致性检查(如老年角色名字不含有网络流行语)</subtask>
+        <subtask>如果不一致,触发重新生成或记录警告日志</subtask>
+      </task>
+
+      <task id="4" status="pending" priority="high">跨章节名字一致性保证
+        <subtask>创建character_name_registry字典,保存角色ID到名字的映射</subtask>
+        <subtask>在生成角色时检查registry中是否已有该角色</subtask>
+        <subtask>如果已有,使用registry中保存的名字</subtask>
+        <subtask>如果是新角色,生成名字并保存到registry</subtask>
+        <subtask>在project save/load时持久化和恢复registry</subtask>
+        <subtask>测试多章节名字一致性</subtask>
+      </task>
+
+      <task id="5" status="pending" priority="medium">名字格式标准化
+        <subtask>创建normalize_character_name(name)函数</subtask>
+        <subtask>实现去除前后空白</subtask>
+        <subtask>实现去除多余内部空格</subtask>
+        <subtask>实现首字母大写或全名适当格式化</subtask>
+        <subtask>在保存和使用名字前调用标准化</subtask>
+        <subtask>验证标准化后的名字格式统一</subtask>
+      </task>
+
+      <task id="6" status="pending" priority="high">错误处理和重试机制
+        <subtask>在名字生成失败时捕获异常</subtask>
+        <subtask>实现最多3次重试机制</subtask>
+        <subtask>如果3次都失败,返回默认名字"待定角色"并记录警告</subtask>
+        <subtask>在状态栏显示"角色名字生成失败,使用默认名字"消息</subtask>
+        <subtask>在app.log中记录详细错误信息</subtask>
+      </task>
+
+      <task id="7" status="pending" priority="medium">集成和端到端测试
+        <subtask>在generate_character()或类似函数中集成名字验证</subtask>
+        <subtask>测试完整角色生成流程</subtask>
+        <subtask>生成多章节小说验证名字一致性</subtask>
+        <subtask>测试各种边界情况(特殊字符、极长名字等)</subtask>
+        <subtask>验证与Epic 1配置系统的集成</subtask>
+      </task>
+    </tasks>
+  </story>
+
+  <acceptanceCriteria>
+    <criterion id="1" epic="AC#1">名字合理性验证 - Given 为小说生成主角名字时, When AI生成角色名字后, Then 名字应该通过合理性验证(包含有效字符、长度适中、符合常规命名习惯), And 不应该包含乱码、特殊符号或不合理字符</criterion>
+    <criterion id="2" epic="AC#2">角色特征一致性 - Given 角色有预设特征(如性别、年龄、文化背景), When 生成名字时, Then 名字应该与这些特征保持一致(如男性角色有男性化名字), And 不应该出现与角色特征矛盾的名字</criterion>
+    <criterion id="3" epic="AC#3">跨章节名字一致性 - Given 同一角色在多个章节中出现, When 在不同章节生成内容时, Then 角色名字应该保持一致, And 不应该出现同一角色有多个不同名字的情况</criterion>
+    <criterion id="4" epic="AC#4">乱码检测和预防 - Given AI生成名字时, When 检测生成结果, Then 如果有乱码或不合理输出, Then 应该触发重新生成或记录警告, And 不应该将乱码名字用于小说内容</criterion>
+    <criterion id="5" epic="AC#5">名字格式标准化 - Given 成功生成名字后, When 保存和使用名字时, Then 名字应该被格式化为标准格式(去除多余空格、首字母大写等), And 确保在整个应用中显示统一</criterion>
+  </acceptanceCriteria>
+
+  <artifacts>
+    <docs>
+      <document path="/home/abelxiaoxing/work/InfiniteQuill/docs/sprint-artifacts/3-1-character-name-generation-fix.md" type="story">主故事文件，包含完整的需求描述和技术细节</document>
+      <document path="/home/abelxiaoxing/work/InfiniteQuill/docs/epics.md" type="epic">Epic 3: AI生成质量增强的源文档</document>
+      <document path="/home/abelxiaoxing/work/InfiniteQuill/docs/bmm-architecture-decisions-2025-11-16.md" type="architecture">架构决策文档，包含相关需求说明</document>
+      <document path="/home/abelxiaoxing/work/InfiniteQuill/novel_generator/CLAUDE.md" type="module">novel_generator模块文档，包含核心生成引擎的详细说明</document>
+    </docs>
+
+    <code>
+      <file path="/home/abelxiaoxing/work/InfiniteQuill/prompt_definitions.py" type="core">
+        <description>角色生成提示词模板定义文件</description>
+        <key_functions>
+          <function name="ai_role_generation_prompt">AI角色生成提示词模板，需要优化以明确要求合理名字格式</function>
+        </key_functions>
+        <code_snippet>
+# 当前AI角色生成提示词 (需要优化)
+ai_role_generation_prompt = """\
+你是一位专业的小说角色设计师，请基于以下描述生成一个完整的角色。
+
+角色描述：{role_description}
+补充说明：{additional_notes}
+
+请生成以下信息：
+1. 角色名称
+2. 角色类型（主角、配角、反派、路人、导师、朋友、恋人、家人、敌人、其他）
+3. 性别（男、女、其他、未知）
+4. 年龄
+5. 外貌描述
+6. 性格特质（从以下列表中选择最匹配的6-8个：勇敢、善良、聪明、幽默、冷静、冲动、乐观、悲观、外向、内向、正直、狡猾、温柔、严厉、自信、自卑、独立、依赖、诚实、虚伪、慷慨、自私、耐心、急躁）
+7. 详细性格描述
+8. 背景故事
+
+请严格按照以下JSON格式返回，不要包含任何其他内容：
+{{
+  "name": "角色名称",
+  "type": "角色类型",
+  "gender": "性别",
+  "age": 年龄数字,
+  "appearance": "外貌描述",
+  "personalities": ["性格1", "性格2", "性格3", "性格4", "性格5", "性格6"],
+  "personality_description": "详细性格描述",
+  "background_story": "背景故事"
+}}
+
+要求：
+- 角色名称要符合小说设定，简洁易记
+- 年龄必须是数字
+- 性格特质必须从提供的列表中选择
+- 外貌描述要生动具体（100-150字）
+- 详细性格描述要深入分析角色的思维模式和行为特点（200-300字）
+- 背景故事要包含角色的成长经历、重要事件和性格形成原因（300-400字）
+"""
+        </code_snippet>
+      </file>
+
+      <file path="/home/abelxiaoxing/work/InfiniteQuill/novel_generator/chapter.py" type="core">
+        <description>章节和角色生成逻辑的核心文件</description>
+        <key_functions>
+          <function name="generate_chapter_draft">生成章节草稿的主函数，需要集成名字验证</function>
+          <function name="build_chapter_prompt">构建章节生成提示词</function>
+          <function name="summarize_recent_chapters">生成章节摘要</function>
+        </key_functions>
+        <dependencies>
+          <dependency>prompt_definitions.py</dependency>
+          <dependency>llm_adapters</dependency>
+          <dependency>utils</dependency>
+          <dependency>novel_generator.vectorstore_utils</dependency>
+        </dependencies>
+      </file>
+
+      <file path="/home/abelxiaoxing/work/InfiniteQuill/novel_generator/consistency_checker.py" type="support">
+        <description>一致性验证模块，可用于增强角色名字一致性检查</description>
+        <key_functions>
+          <function name="check_consistency">检查小说内容一致性，可扩展用于名字一致性验证</function>
+        </key_functions>
+        <dependencies>
+          <dependency>llm_adapters</dependency>
+        </dependencies>
+      </file>
+
+      <file path="/home/abelxiaoxing/work/InfiniteQuill/project_manager.py" type="core">
+        <description>项目管理系统，负责角色名字持久化</description>
+        <key_functions>
+          <function name="save_project">保存项目数据，需要扩展以包含角色名字注册表</function>
+          <function name="load_project">加载项目数据，需要恢复角色名字注册表</function>
+          <function name="update_generation_status">更新生成状态</function>
+        </key_functions>
+        <dependencies>
+          <dependency>utils</dependency>
+          <dependency>json</dependency>
+          <dependency>datetime</dependency>
+        </dependencies>
+      </file>
+    </code>
+
+    <dependencies>
+      <package name="re">Python正则表达式模块，用于名字验证</package>
+      <package name="json">JSON序列化，用于角色信息持久化</package>
+      <package name="logging">日志记录模块</package>
+      <package name="langchain">LLM调用框架</package>
+      <package name="llm_adapters">自定义LLM适配器</package>
+      <package name="embedding_adapters">嵌入模型适配器</package>
+      <package name="novel_generator.vectorstore_utils">向量存储工具</package>
+      <package name="utils">通用工具函数</package>
+    </dependencies>
+  </artifacts>
+
+  <constraints>
+    <pattern>必须保持与现有生成流程的兼容性</pattern>
+    <pattern>名字验证不应该显著降低生成速度</pattern>
+    <pattern>验证失败时提供合理的降级方案(默认名字)</pattern>
+    <pattern>记录足够的日志以便调试和优化</pattern>
+    <pattern>遵循Epic 1的错误处理模式: try-except,状态反馈,日志记录</pattern>
+    <pattern>优雅降级原则: 验证失败不影响整体小说生成</pattern>
+    <pattern>用户友好的错误消息</pattern>
+    <pattern>使用中央registry确保角色名字一致性</pattern>
+    <pattern>持久化到项目文件</pattern>
+    <pattern>正则表达式预编译以提升性能</pattern>
+    <pattern>简单规则先检查(长度、空值),复杂规则后检查(特征一致性)</pattern>
+    <pattern>缓存验证结果避免重复验证</pattern>
+  </constraints>
+
+  <interfaces>
+    <api name="validate_character_name" location="novel_generator/chapter.py">
+      <description>验证角色名字的合理性</description>
+      <parameters>
+        <parameter name="name" type="str">角色名字</parameter>
+        <parameter name="traits" type="dict">角色特征(性别、年龄、文化背景)</parameter>
+      </parameters>
+      <returns type="bool">验证结果</returns>
+    </api>
+
+    <api name="check_name_consistency" location="novel_generator/chapter.py">
+      <description>检查名字与角色特征的一致性</description>
+      <parameters>
+        <parameter name="name" type="str">角色名字</parameter>
+        <parameter name="traits" type="dict">角色特征</parameter>
+      </parameters>
+      <returns type="bool">一致性检查结果</returns>
+    </api>
+
+    <api name="normalize_character_name" location="novel_generator/chapter.py">
+      <description>标准化角色名字格式</description>
+      <parameters>
+        <parameter name="name" type="str">原始名字</parameter>
+      </parameters>
+      <returns type="str">标准化后的名字</returns>
+    </api>
+
+    <api name="CharacterNameRegistry" location="novel_generator/chapter.py">
+      <description>角色名字注册表，保证跨章节一致性</description>
+      <methods>
+        <method name="get_or_create_name">获取或创建角色名字</method>
+        <method name="save_to_project">保存到项目文件</method>
+        <method name="load_from_project">从项目文件加载</method>
+      </methods>
+    </api>
+  </interfaces>
+
+  <tests>
+    <standards>
+      <standard>所有生成的角色名字必须通过合理性验证</standard>
+      <standard>同一角色在不同章节中名字必须保持一致</standard>
+      <standard>名字必须与角色特征(性别、年龄、文化背景)保持一致</standard>
+      <standard>乱码和不合理字符必须被检测并处理</standard>
+      <standard>名字格式必须标准化且统一</standard>
+      <standard>验证失败时必须有合理的降级处理</standard>
+      <standard>错误信息必须记录到日志文件</standard>
+      <standard>状态栏必须显示相应的用户反馈</standard>
+    </standards>
+
+    <locations>
+      <location path="/home/abelxiaoxing/work/InfiniteQuill/tests/test_character_name_generation.py">角色名字生成测试文件</location>
+      <location path="/home/abelxiaoxing/work/InfiniteQuill/tests/test_name_validation.py">名字验证逻辑测试</location>
+      <location path="/home/abelxiaoxing/work/InfiniteQuill/tests/test_name_consistency.py">名字一致性测试</location>
+      <location path="/home/abelxiaoxing/work/InfiniteQuill/app.log">应用程序日志文件</location>
+    </locations>
+
+    <ideas>
+      <test_idea>测试各种边界情况：空字符串、特殊字符、极长名字、Unicode字符</test_idea>
+      <test_idea>测试不同性别特征的名字一致性：男性角色不应有女性化名字</test_idea>
+      <test_idea>测试跨章节名字一致性：同一角色ID应该始终返回相同名字</test_idea>
+      <test_idea>测试重试机制：模拟LLM失败情况，验证重试和降级处理</test_idea>
+      <test_idea>测试性能影响：验证名字验证不会显著降低生成速度</test_idea>
+      <test_idea>测试国际化支持：验证中文字符和Unicode范围检测</test_idea>
+      <test_idea>测试错误处理：验证异常捕获和日志记录</test_idea>
+      <test_idea>测试用户界面反馈：验证状态栏消息显示</test_idea>
+    </ideas>
+  </tests>
+
+  <validation>
+    <regex_patterns>
+      <pattern name="chinese_name">^[\u4e00-\u9fa5]{2,4}$</pattern>
+      <pattern name="english_name">^[a-zA-Z\s]{2,20}$</pattern>
+      <pattern name="mixed_name">^[\u4e00-\u9fa5a-zA-Z\s]{2,20}$</pattern>
+      <pattern name="invalid_chars">[0-9@#$%^&*()_+=\[\]{}|;':",.<>/?！￥…（）—【】、；：‘’"，。？《》]</pattern>
+      <pattern name="unicode_range">[\u0000-\u007F\u4e00-\u9fa5]</pattern>
+      <pattern name="female_indicators">[娜丽婷娟媛]</pattern>
+      <pattern name="male_indicators">[刚强勇军]</pattern>
+    </regex_patterns>
+
+    <rules>
+      <rule>名字长度必须在2-20个字符之间</rule>
+      <rule>中文名字应该包含有效的汉字字符</rule>
+      <rule>不应包含数字或特殊符号</rule>
+      <rule>应该去除前后空白字符</rule>
+      <rule>多个内部空格应该合并为一个</rule>
+      <rule>男性角色名字不应包含明显的女性化字符</rule>
+      <rule>女性角色名字不应包含明显的男性化字符</rule>
+      <rule>老年角色名字不应包含网络流行语</rule>
+      <rule>同一角色ID必须始终映射到相同的名字</rule>
+    </rules>
+  </validation>
+</story-context>
