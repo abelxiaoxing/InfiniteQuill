@@ -146,7 +146,7 @@ class RoleManager(QWidget):
         self.role_search = QLineEdit()
         self.role_search.setPlaceholderText("输入角色名、标签或特征...")
         self.role_search.textChanged.connect(self.filter_roles)
-        self.role_search.returnPressed.connect(self.search_roles)  # 回车键搜索
+        self.role_search.returnPressed.connect(self.search_roles)  # 回车搜索
         search_layout.addWidget(self.role_search)
 
         self.search_btn = QPushButton("搜索")
@@ -197,25 +197,7 @@ class RoleManager(QWidget):
         self.role_list.setObjectName("RoleListWidget")
         self.role_list.setSelectionMode(QListWidget.SingleSelection)
         self.role_list.itemClicked.connect(self.on_role_item_clicked)
-        self.role_list.setStyleSheet("""
-            QListWidget#RoleListWidget {
-                border: none;
-                background-color: transparent;
-                outline: none;
-            }
-            QListWidget#RoleListWidget::item {
-                padding: 12px;
-                border-bottom: 1px solid #e0e0e0;
-                margin: 0px;
-            }
-            QListWidget#RoleListWidget::item:hover {
-                background-color: #f5f5f5;
-            }
-            QListWidget#RoleListWidget::item:selected {
-                background-color: #e3f2fd;
-                border-left: 4px solid #1976d2;
-            }
-        """)
+        # 移除内联样式，使用外部QSS文件
         list_layout.addWidget(self.role_list)
 
         layout.addWidget(list_group)

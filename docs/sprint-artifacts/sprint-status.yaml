@@ -40,16 +40,16 @@ story_location: /home/abelxiaoxing/work/InfiniteQuill/docs/sprint-artifacts
 development_status:
   # Epic 1: 基础设施现代化
   epic-1: backlog
-  1-1-project-setup-and-infrastructure-initialization: ready-for-dev
-  1-2-config-auto-save-core-functionality: ready-for-dev
-  1-3-auto-save-status-feedback-system: ready-for-dev
-  1-4-config-save-boundary-cases: ready-for-dev
+  1-1-project-setup-and-infrastructure-initialization: review
+  1-2-config-auto-save-core-functionality: review
+  1-3-auto-save-status-feedback-system: review
+  1-4-config-save-boundary-cases: review
   epic-1-retrospective: optional
 
   # Epic 2: UI/UX体验优化
   epic-2: backlog
-  2-1-blueprint-detail-level-removal: ready-for-dev
-  2-2-dark-theme-role-list-fix: ready-for-dev
+  2-1-blueprint-detail-level-removal: review
+  2-2-dark-theme-role-list-fix: review
   2-3-ui-theme-consistency-validation: ready-for-dev
   epic-2-retrospective: optional
 

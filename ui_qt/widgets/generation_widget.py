@@ -788,10 +788,6 @@ class GenerationWidget(QWidget):
 
         control_layout.addRow("起始章节:", self.create_chapter_range_selector())
 
-        self.detail_level = QComboBox()
-        self.detail_level.addItems(["简要", "标准", "详细"])
-        control_layout.addRow("详细程度:", self.detail_level)
-
         self.generate_chapter_btn = QPushButton(" 生成章节蓝图")
         self.generate_chapter_btn.clicked.connect(self.generate_chapter_blueprint)
         control_layout.addRow("", self.generate_chapter_btn)

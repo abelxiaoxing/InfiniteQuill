@@ -1120,8 +1120,37 @@ class ConfigWidget(QWidget):
                 logging.error(f"关闭前配置保存异常: {e}", exc_info=True)
                 self.auto_save_status_changed.emit("error", f"配置保存失败: {str(e)}")
 
+        # 资源清理
+        try:
+            # 清理自动保存定时器
+            if hasattr(self, 'auto_save_timer') and self.auto_save_timer:
+                self.auto_save_timer.deleteLater()
+                self.auto_save_timer = None
+                logging.debug("自动保存定时器资源已清理")
+
+            # 清理状态栏引用
+            if hasattr(self, 'status_bar') and self.status_bar:
+                self.status_bar = None
+                logging.debug("状态栏引用已清理")
+
+            # 清理保存线程引用
+            if hasattr(self, 'save_thread') and self.save_thread:
+                self.save_thread = None
+                logging.debug("保存线程引用已清理")
+
+            # 确保事件循环处理完成
+            from PySide6.QtWidgets import QApplication
+            if QApplication.instance():
+                QApplication.processEvents()
+                logging.debug("事件循环处理完成")
+
+        except Exception as e:
+            logging.warning(f"资源清理时出现异常: {e}")
+            # 不影响关闭流程
+
         # 允许关闭
         event.accept()
+        logging.info("配置窗口关闭完成")
 
     def force_save_config(self):
         """强制立即保存配置（用于手动保存按钮）"""

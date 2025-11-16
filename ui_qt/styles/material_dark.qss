@@ -1,0 +1,518 @@
+/* ================ 全局样式 ================ */
+QWidget {
+    font-family: "Microsoft YaHei UI", "Segoe UI Emoji", "Apple Color Emoji", "JetBrains Mono", "PingFang SC", "Noto Sans CJK SC", "Noto Color Emoji", "Noto Sans Mono", "DejaVu Sans Mono", sans-serif;
+    font-size: 9pt;
+    background-color: #2d2d2d;
+    color: #ffffff;
+}
+
+QMainWindow {
+    background-color: #1e1e1e;
+}
+
+/* ================ 标签页样式 ================ */
+QTabWidget::pane {
+    border: 1px solid #404040;
+    background-color: #2d2d2d;
+}
+
+QTabBar::tab {
+    background-color: #3d3d3d;
+    border: 1px solid #404040;
+    padding: 8px 16px;
+    margin-right: 2px;
+    border-top-left-radius: 4px;
+    border-top-right-radius: 4px;
+}
+
+QTabBar::tab:selected {
+    background-color: #2d2d2d;
+    border-bottom-color: #2d2d2d;
+}
+
+QTabBar::tab:hover {
+    background-color: #4a4a4a;
+}
+
+/* ================ 按钮样式 ================ */
+QPushButton {
+    background-color: #1e88e5;
+    border: 1px solid #1976d2;
+    border-radius: 4px;
+    padding: 6px 12px;
+    min-width: 80px;
+    color: #ffffff;
+}
+
+QPushButton:hover {
+    background-color: #1565c0;
+}
+
+QPushButton:pressed {
+    background-color: #0d47a1;
+}
+
+QPushButton:disabled {
+    background-color: #424242;
+    border-color: #616161;
+    color: #888888;
+}
+
+QPushButton[style="primary"] {
+    background-color: #2196f3;
+    color: white;
+    font-weight: bold;
+}
+
+QPushButton[style="primary"]:hover {
+    background-color: #1976d2;
+}
+
+QPushButton[style="success"] {
+    background-color: #43a047;
+    color: white;
+}
+
+QPushButton[style="success"]:hover {
+    background-color: #388e3c;
+}
+
+QPushButton[style="warning"] {
+    background-color: #fb8c00;
+    color: white;
+}
+
+QPushButton[style="warning"]:hover {
+    background-color: #ef6c00;
+}
+
+QPushButton[style="danger"] {
+    background-color: #e53935;
+    color: white;
+}
+
+QPushButton[style="danger"]:hover {
+    background-color: #d32f2f;
+}
+
+/* ================ 输入框样式 ================ */
+QLineEdit, QTextEdit, QPlainTextEdit {
+    border: 1px solid #555;
+    border-radius: 4px;
+    padding: 6px;
+    background-color: #3d3d3d;
+    color: #ffffff;
+}
+
+QLineEdit:focus, QTextEdit:focus, QPlainTextEdit:focus {
+    border-color: #2196f3;
+    outline: none;
+}
+
+/* ================ 组合框样式 ================ */
+QComboBox {
+    border: 1px solid #555;
+    border-radius: 4px;
+    padding: 6px 24px 6px 8px;
+    background-color: #3d3d3d;
+    color: #ffffff;
+    min-width: 120px;
+}
+
+QComboBox:focus {
+    border-color: #2196f3;
+}
+
+QComboBox::drop-down {
+    border: none;
+    width: 20px;
+}
+
+QComboBox::down-arrow {
+    image: none;
+    border-left: 4px solid transparent;
+    border-right: 4px solid transparent;
+    border-top: 4px solid #ffffff;
+    margin-right: 8px;
+}
+
+QComboBox QAbstractItemView {
+    background-color: #3d3d3d;
+    color: #ffffff;
+    selection-background-color: #2196f3;
+    border: 1px solid #555;
+}
+
+/* ================ 滑块样式 ================ */
+QSlider::groove:horizontal {
+    border: 1px solid #555;
+    background: #3d3d3d;
+    height: 8px;
+    border-radius: 4px;
+}
+
+QSlider::handle:horizontal {
+    background: #2196f3;
+    border: 1px solid #1976d2;
+    width: 18px;
+    margin: -5px 0;
+    border-radius: 9px;
+}
+
+/* ================ 分组框样式 ================ */
+QGroupBox {
+    font-weight: bold;
+    border: 2px solid #555555;
+    border-radius: 5px;
+    margin-top: 10px;
+    padding-top: 10px;
+    color: #ffffff;
+}
+
+QGroupBox::title {
+    subcontrol-origin: margin;
+    left: 10px;
+    padding: 0 5px 0 5px;
+    color: #ffffff;
+}
+
+/* ================ 分割器样式 ================ */
+QSplitter::handle {
+    background-color: #555555;
+}
+
+QSplitter::handle:horizontal {
+    width: 2px;
+}
+
+QSplitter::handle:vertical {
+    height: 2px;
+}
+
+/* ================ 滚动条样式 ================ */
+QScrollBar:vertical {
+    border: none;
+    background: #2d2d2d;
+    width: 12px;
+    margin: 0px 0px 0px 0px;
+}
+
+QScrollBar::handle:vertical {
+    background: #555555;
+    min-height: 20px;
+    border-radius: 6px;
+}
+
+QScrollBar::handle:vertical:hover {
+    background: #777777;
+}
+
+QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+    height: 0px;
+}
+
+/* ================ 状态栏样式 ================ */
+QStatusBar {
+    background-color: #212121;
+    border-top: 1px solid #404040;
+    color: #ffffff;
+}
+
+QStatusBar QLabel {
+    padding: 2px 8px;
+    color: #ffffff;
+}
+
+/* ================ 进度条样式 ================ */
+QProgressBar {
+    border: 1px solid #555;
+    border-radius: 4px;
+    text-align: center;
+    background-color: #3d3d3d;
+    color: #ffffff;
+}
+
+QProgressBar::chunk {
+    background-color: #2196f3;
+    border-radius: 3px;
+}
+
+/* ================ 菜单样式 ================ */
+QMenuBar {
+    background-color: #212121;
+    border-bottom: 1px solid #404040;
+    color: #ffffff;
+}
+
+QMenuBar::item {
+    padding: 4px 8px;
+    background-color: transparent;
+    color: #ffffff;
+}
+
+QMenuBar::item:selected {
+    background-color: #3d3d3d;
+}
+
+QMenu {
+    background-color: #2d2d2d;
+    border: 1px solid #404040;
+    padding: 4px 0px;
+    color: #ffffff;
+}
+
+QMenu::item {
+    padding: 6px 20px;
+}
+
+QMenu::item:selected {
+    background-color: #1e88e5;
+}
+
+/* ================ 表格样式 ================ */
+QTableWidget {
+    gridline-color: #404040;
+    background-color: #2d2d2d;
+    selection-background-color: #1e88e5;
+    color: #ffffff;
+}
+
+QTableWidget::item {
+    padding: 4px 8px;
+}
+
+QTableWidget::item:selected {
+    background-color: #1976d2;
+}
+
+QHeaderView::section {
+    background-color: #3d3d3d;
+    padding: 4px 8px;
+    border: 1px solid #404040;
+    font-weight: bold;
+    color: #ffffff;
+}
+
+/* ================ 树形控件样式 ================ */
+QTreeWidget {
+    background-color: #2d2d2d;
+    selection-background-color: #1e88e5;
+    alternate-background-color: #3a3a3a;
+    color: #ffffff;
+}
+
+QTreeWidget::item {
+    padding: 2px 4px;
+}
+
+QTreeWidget::item:selected {
+    background-color: #1976d2;
+}
+
+/* ================ 工具提示样式 ================ */
+QToolTip {
+    background-color: #3d3d3d;
+    border: 1px solid #555;
+    border-radius: 3px;
+    padding: 4px 6px;
+    font-size: 8pt;
+    color: #ffffff;
+}
+
+/* ================ 主题感知分隔线样式 ================ */
+QFrame#ThemeAwareSeparator {
+    background-color: #555555;
+}
+
+/* ================ 角色操作组样式 ================ */
+QFrame#RoleActionGroup {
+    background-color: #2d2d2d;
+    padding: 10px;
+    border-radius: 5px;
+}
+
+/* 角色操作按钮专用样式 - 暗色主题 */
+QFrame#RoleActionGroup QPushButton {
+    background-color: #3d3d3d;
+    border: 1px solid #555555;
+    color: #ffffff;
+    padding: 6px 12px;
+    border-radius: 4px;
+    min-width: 80px;
+}
+
+QFrame#RoleActionGroup QPushButton:hover {
+    background-color: #4a4a4a;
+    border-color: #2196f3;
+}
+
+QFrame#RoleActionGroup QPushButton:pressed {
+    background-color: #2a2a2a;
+}
+
+QFrame#RoleActionGroup QPushButton:disabled {
+    background-color: #424242;
+    border-color: #616161;
+    color: #888888;
+}
+
+/* ================ 信息面板样式 - 暗色主题 ================ */
+QFrame#InfoPanel {
+    background-color: #2d2d2d;
+    border: 1px solid #555555;
+    border-radius: 6px;
+    padding: 10px;
+    color: #ffffff;
+}
+
+QFrame#InfoPanel QLabel {
+    color: #ffffff;
+}
+
+QFrame#InfoPanel QLabel#InfoPanelContent {
+    color: #cccccc;
+}
+
+/* ================ 角色列表样式 - 暗色主题 ================ */
+QListWidget#RoleListWidget {
+    border: none;
+    background-color: transparent;
+    outline: none;
+}
+
+QListWidget#RoleListWidget::item {
+    padding: 12px;
+    border-bottom: 1px solid #555555;
+    margin: 0px;
+    color: #ffffff;
+}
+
+QListWidget#RoleListWidget::item:hover {
+    background-color: #4a4a4a;
+    color: #ffffff;
+}
+
+/* Story 2.2 修复: 深色主题下角色列表选中项样式 */
+QListWidget#RoleListWidget::item:selected {
+    background-color: #3a3a3a;
+    border-left: 4px solid #1976d2;
+    color: #ffffff;
+}
+
+/* ================ 状态指示器样式 - 暗色主题 ================ */
+QLabel#GenerationStatusIndicator {
+    padding: 2px 8px;
+    border-radius: 3px;
+    background-color: #43a047;
+    color: #ffffff;
+}
+
+QLabel#GenerationStatusIndicator[status="generating"] {
+    background-color: #ffa726;
+    color: #000000;
+    font-weight: bold;
+}
+
+QLabel#GenerationStatusIndicator[status="idle"] {
+    background-color: #43a047;
+    color: #ffffff;
+    font-weight: normal;
+}
+
+/* ================ 导入标题样式 - 暗色主题 ================ */
+QLabel#ImportTitleLabel {
+    background-color: #2d2d2d;
+    color: #ffffff;
+}
+
+/* ================ 应用设置标题样式 - 暗色主题 ================ */
+QLabel#AppSettingsTitle {
+    padding: 10px;
+    background-color: #2d2d2d;
+    border-radius: 6px;
+    margin-bottom: 10px;
+    color: #ffffff;
+    font-weight: bold;
+}
+
+/* ================ 主题预览框架 - 暗色主题 ================ */
+QFrame#ThemePreviewFrame {
+    border: 2px solid #555555;
+    border-radius: 8px;
+    background-color: #2d2d2d;
+    color: #ffffff;
+    padding: 20px;
+}
+
+/* ================ 主题预览标题 - 暗色主题 ================ */
+QLabel#ThemePreviewTitle {
+    font-weight: bold;
+    font-size: 12pt;
+    color: #ffffff;
+}
+
+/* ================ 架构状态标签 - 暗色主题 ================ */
+QLabel#ArchitectureStatusLabel {
+    color: #aaaaaa;
+    font-style: italic;
+}
+
+QLabel#ArchitectureStatusLabel[status="success"] {
+    color: #43a047;
+    font-style: normal;
+}
+
+QLabel#ArchitectureStatusLabel[status="warning"] {
+    color: #ffa726;
+    font-style: normal;
+}
+
+/* ================ 主窗口组件标题 - 暗色主题 ================ */
+/* 生成组件标题 */
+QLabel#GenerationWidgetTitle {
+    padding: 10px;
+    border-radius: 6px;
+    margin-bottom: 10px;
+    background-color: #1b5e20;
+    color: #ffffff;
+    font-weight: bold;
+    font-size: 14pt;
+}
+
+/* 章节编辑器标题 */
+QLabel#ChapterEditorTitle {
+    padding: 10px;
+    border-radius: 6px;
+    margin-bottom: 10px;
+    background-color: #1565c0;
+    color: #ffffff;
+    font-weight: bold;
+    font-size: 14pt;
+}
+
+/* 角色管理器标题 */
+QLabel#RoleManagerTitle {
+    padding: 10px;
+    border-radius: 6px;
+    margin-bottom: 10px;
+    background-color: #6a1b9a;
+    color: #ffffff;
+    font-weight: bold;
+    font-size: 14pt;
+}
+
+/* ================ 状态栏 - 暗色主题 ================ */
+QStatusBar {
+    background-color: #1e1e1e;
+    color: #ffffff;
+    border-top: 1px solid #555;
+}
+
+QStatusBar::item {
+    border: none;
+}
+
+QLabel#StatusBarSeparator {
+    color: #666666;
+    padding: 0px 2px;
+}

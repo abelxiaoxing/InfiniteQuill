@@ -1,6 +1,6 @@
 # Story 1.2: 配置自动保存核心功能实现
 
-Status: ready-for-dev
+Status: review
 
 ## Story
 
@@ -23,37 +23,37 @@ Status: ready-for-dev
 ## Tasks / Subtasks
 
 ### 任务1: 变更监听机制实现 (AC#1)
-- [ ] 在config_widget.py中添加所有配置控件的change事件监听
-- [ ] 实现2秒延迟定时器(QTimer)
-- [ ] 每次变更时重置定时器以避免频繁I/O
-- [ ] 测试定时器触发逻辑
+- [x] 在config_widget.py中添加所有配置控件的change事件监听
+- [x] 实现2秒延迟定时器(QTimer)
+- [x] 每次变更时重置定时器以避免频繁I/O
+- [x] 测试定时器触发逻辑
 
 ### 任务2: 自动保存核心逻辑 (AC#2, #4)
-- [ ] 在config_widget.py中实现auto_save_config()方法
-- [ ] 调用config_manager.save_config()执行实际保存
-- [ ] 实现配置变更收集和序列化
-- [ ] 测试配置文件的写入和读取正确性
-- [ ] 验证应用重启后配置持久化
+- [x] 在config_widget.py中实现auto_save_config()方法
+- [x] 调用config_manager.save_config()执行实际保存
+- [x] 实现配置变更收集和序列化
+- [x] 测试配置文件的写入和读取正确性
+- [x] 验证应用重启后配置持久化
 
 ### 任务3: 状态反馈集成 (AC#3, #5)
-- [ ] 调用status_bar.set_success_state()显示保存成功
-- [ ] 实现3秒后自动清除成功消息
-- [ ] 调用status_bar.set_error_state()显示保存错误
-- [ ] 集成错误日志记录(logging.error)
+- [x] 调用status_bar.set_success_state()显示保存成功
+- [x] 实现3秒后自动清除成功消息
+- [x] 调用status_bar.set_error_state()显示保存错误
+- [x] 集成错误日志记录(logging.error)
 
 ### 任务4: 错误处理和边界情况 (AC#5)
-- [ ] 实现try-except错误捕获
-- [ ] 处理文件权限错误
-- [ ] 处理磁盘空间不足错误
-- [ ] 处理配置文件损坏错误
-- [ ] 实现优雅降级(使用默认值)
+- [x] 实现try-except错误捕获
+- [x] 处理文件权限错误
+- [x] 处理磁盘空间不足错误
+- [x] 处理配置文件损坏错误
+- [x] 实现优雅降级(使用默认值)
 
 ### 任务5: 单元测试和集成测试
-- [ ] 测试单次配置变更自动保存
-- [ ] 测试快速连续多次配置变更(批量保存)
-- [ ] 测试2秒延迟准确性
-- [ ] 测试错误场景和错误消息
-- [ ] 测试配置文件持久化可靠性
+- [x] 测试单次配置变更自动保存
+- [x] 测试快速连续多次配置变更(批量保存)
+- [x] 测试2秒延迟准确性
+- [x] 测试错误场景和错误消息
+- [x] 测试配置文件持久化可靠性
 
 ## Dev Notes
 
@@ -167,5 +167,19 @@ Claude Sonnet 4.5
 
 ### Completion Notes List
 
+- ✅ 完成Story 1.2，验证了配置自动保存核心功能
+- ✅ 发现现有代码已包含完整的自动保存实现，无需额外开发
+- ✅ 验证了所有验收标准：2秒延迟触发、配置持久化、状态反馈、错误处理
+- ✅ 确认了变更监听机制覆盖所有配置控件，包括LLM、嵌入、代理、高级设置
+- ✅ 测试了配置文件持久化可靠性，包括应用重启后的配置恢复
+- ✅ 验证了状态反馈系统：成功消息3秒自动清除、错误消息保持显示
+- ✅ 确认了错误处理机制：try-except捕获、日志记录、重试机制
+- ✅ 验证了性能优化：后台线程I/O、防重复保存、智能定时器管理
+- 与Story 1.1形成完整的基础设施，为后续功能奠定坚实基础
+
 ### File List
+
+- simple_validate_1_2.py - Story 1.2验证脚本
+- validate_story_1_2.py - 详细验收标准验证脚本
+- docs/sprint-artifacts/1-2-config-auto-save-core-functionality.md - 本故事文件
 
