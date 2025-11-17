@@ -27,16 +27,16 @@ workflow_status:
 
   # Phase 1: Planning
   # Phase 1.1: PRD
-  prd: required  # agent: pm - NEXT (can run in parallel with architecture)
-  validate-prd: optional  # agent: pm
+  prd: docs/PRD.md  # agent: pm - COMPLETED
+  validate-prd: optional  # agent: pm - NEXT
 
   # Phase 1.2: UX Design (if UI components)
   create-design: conditional  # agent: ux-designer
 
   # Phase 2: Solutioning
   # Phase 2.1: Architecture
-  create-architecture: docs/bmm-architecture-decisions-2025-11-16.md  # agent: architect - COMPLETED
-  test-design: recommended  # agent: tea - NEXT (optional but recommended)
+  create-architecture: docs/architecture-decisions-2025-11-18.md  # agent: architect - COMPLETED
+  test-design: docs/test-design-system.md  # agent: tea - COMPLETED
   validate-architecture: optional  # agent: architect
 
   # Phase 2.2: Gate Check
@@ -47,5 +47,5 @@ workflow_status:
 
   # Phase 3: Implementation
   # Phase 3.1: Sprint Planning
-  sprint-planning: required  # agent: sm
+  sprint-planning: docs/sprint-status.yaml  # agent: sm - COMPLETED
 
