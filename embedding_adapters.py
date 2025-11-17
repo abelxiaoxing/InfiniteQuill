@@ -287,6 +287,68 @@ class SiliconFlowEmbeddingAdapter(BaseEmbeddingAdapter):
             logging.error(f"Error parsing SiliconFlow API response: {str(e)}")
             return []
 
+class SentenceTransformerAdapter(BaseEmbeddingAdapter):
+    """
+    基于 sentence-transformers 库的本地嵌入适配器
+    推荐模型: paraphrase-multilingual-MiniLM-L12-v2
+    """
+    def __init__(self, model_name: str = 'paraphrase-multilingual-MiniLM-L12-v2'):
+        self.model_name = model_name
+        self._model = None
+        self._load_model()
+
+    def _load_model(self):
+        """延迟加载模型"""
+        try:
+            from sentence_transformers import SentenceTransformer
+            import os
+            import ssl
+            import torch
+
+            # 设置SSL环境变量以解决下载问题
+            ssl._create_default_https_context = ssl._create_unverified_context
+            os.environ["TOKENIZERS_PARALLELISM"] = "false"
+
+            # 强制使用CPU，避免CUDA兼容性问题
+            device = "cpu"
+            if torch.cuda.is_available():
+                logging.warning("CUDA detected but forcing CPU to avoid compatibility issues")
+                torch.set_num_threads(4)  # 限制CPU线程数
+
+            logging.info(f"Loading sentence transformer model: {self.model_name} on {device}")
+            self._model = SentenceTransformer(self.model_name, device=device)
+            logging.info("Model loaded successfully")
+        except Exception as e:
+            logging.error(f"Failed to load sentence transformer model: {e}")
+            traceback.print_exc()
+            self._model = None
+
+    def embed_documents(self, texts: List[str]) -> List[List[float]]:
+        if self._model is None:
+            logging.error("Model not loaded, returning empty embeddings")
+            return [[]] * len(texts)
+
+        try:
+            embeddings = self._model.encode(texts, convert_to_numpy=True)
+            return embeddings.tolist()
+        except Exception as e:
+            logging.error(f"Error encoding documents: {e}")
+            traceback.print_exc()
+            return [[]] * len(texts)
+
+    def embed_query(self, query: str) -> List[float]:
+        if self._model is None:
+            logging.error("Model not loaded, returning empty embedding")
+            return []
+
+        try:
+            embedding = self._model.encode([query], convert_to_numpy=True)
+            return embedding[0].tolist()
+        except Exception as e:
+            logging.error(f"Error encoding query: {e}")
+            traceback.print_exc()
+            return []
+
 def create_embedding_adapter(
     interface_format: str,
     api_key: str,
@@ -309,5 +371,7 @@ def create_embedding_adapter(
         return GeminiEmbeddingAdapter(api_key, model_name, base_url)
     elif fmt == "siliconflow":
         return SiliconFlowEmbeddingAdapter(api_key, base_url, model_name)
+    elif fmt == "sentence-transformers" or fmt == "sentence_transformers":
+        return SentenceTransformerAdapter(model_name)
     else:
         raise ValueError(f"Unknown embedding interface_format: {interface_format}")

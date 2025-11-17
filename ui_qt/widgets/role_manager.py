@@ -52,6 +52,21 @@ class RoleManager(QWidget):
         # 使用事件循环启动后执行的定时器
         QTimer.singleShot(0, self._initialize_timer)
 
+    def changeEvent(self, event):
+        """处理系统事件，包括主题切换"""
+        if event.type() == event.Type.StyleChange:
+            # 主题切换时重新应用样式
+            if hasattr(self, 'role_list'):
+                self.role_list.style().unpolish(self.role_list)
+                self.role_list.style().polish(self.role_list)
+                # 安全地调用update方法
+                try:
+                    self.role_list.update()
+                except TypeError:
+                    # 如果update方法需要参数，跳过调用
+                    pass
+        super().changeEvent(event)
+
     def setup_ui(self):
         """设置UI布局"""
         import logging
@@ -1645,40 +1660,78 @@ class RoleManager(QWidget):
                 # 设置超时时间（60秒）
                 timeout = 60
                 start_time = time.time()
+                max_retries = 3
+                retry_count = 0
 
-                try:
-                    logger.info("开始调用LLM API...")
-                    logger.info(f"设置超时时间: {timeout}秒")
+                while retry_count < max_retries:
+                    try:
+                        logger.info(f"开始调用LLM API... (尝试 {retry_count + 1}/{max_retries})")
+                        logger.info(f"设置超时时间: {timeout}秒")
 
-                    # 调用LLM
-                    response = llm_adapter.invoke(prompt)
+                        # 调用LLM
+                        response = llm_adapter.invoke(prompt)
 
-                    # 检查是否超时
-                    elapsed = time.time() - start_time
-                    logger.info(f"API调用耗时: {elapsed:.2f}秒")
-                    logger.info(f"LLM响应长度: {len(response) if response else 0} 字符")
+                        # 检查是否超时
+                        elapsed = time.time() - start_time
+                        logger.info(f"API调用耗时: {elapsed:.2f}秒")
+                        logger.info(f"LLM响应长度: {len(response) if response else 0} 字符")
 
-                    # 记录前200个字符作为调试信息
-                    if response:
-                        logger.debug(f"LLM响应前200字符: {response[:200]}")
-                    else:
-                        logger.warning("LLM返回空响应")
+                        # 记录前200个字符作为调试信息
+                        if response:
+                            logger.debug(f"LLM响应前200字符: {response[:200]}")
+                        else:
+                            logger.warning("LLM返回空响应")
 
-                    if elapsed > timeout:
-                        progress.close()
-                        dialog.accept()
-                        error_msg = f"API调用超时（>{timeout}秒），请检查网络连接或增加超时时间"
-                        logger.error(error_msg)
-                        show_error_dialog(self, "生成失败", error_msg)
-                        return
+                        if elapsed > timeout:
+                            error_msg = f"API调用超时（>{timeout}秒），请检查网络连接或增加超时时间"
+                            logger.error(error_msg)
+                            if retry_count < max_retries - 1:
+                                retry_count += 1
+                                logger.info(f"准备重试... ({retry_count}/{max_retries})")
+                                time.sleep(1)  # 等待1秒后重试
+                                continue
+                            else:
+                                progress.close()
+                                dialog.accept()
+                                show_error_dialog(self, "生成失败", error_msg)
+                                return
 
-                    if not response:
-                        progress.close()
-                        dialog.accept()
-                        error_msg = "未获取到LLM响应，请检查网络连接和API配置"
-                        logger.error(error_msg)
-                        show_error_dialog(self, "生成失败", error_msg)
-                        return
+                        if not response:
+                            error_msg = "未获取到LLM响应，请检查网络连接和API配置"
+                            logger.error(error_msg)
+                            if retry_count < max_retries - 1:
+                                retry_count += 1
+                                logger.info(f"准备重试... ({retry_count}/{max_retries})")
+                                time.sleep(2)  # 等待2秒后重试
+                                continue
+                            else:
+                                progress.close()
+                                dialog.accept()
+                                show_error_dialog(self, "生成失败", error_msg)
+                                return
+
+                        # 成功获取响应，跳出重试循环
+                        break
+
+                    except Exception as e:
+                        error_msg = f"生成角色时出错: {str(e)}"
+                        logger.error(f"{error_msg}\n异常类型: {type(e).__name__}")
+                        import traceback
+                        logger.error(traceback.format_exc())
+
+                        if retry_count < max_retries - 1:
+                            retry_count += 1
+                            logger.info(f"生成异常，准备重试... ({retry_count}/{max_retries})")
+                            time.sleep(2)
+                            continue
+                        else:
+                            progress.close()
+                            dialog.accept()
+                            show_error_dialog(self, "错误", error_msg)
+                            return
+
+                # 如果成功获取到响应，继续处理
+                if 'response' in locals() and response:
 
                     # 解析JSON响应
                     # 尝试提取JSON部分
@@ -1689,6 +1742,31 @@ class RoleManager(QWidget):
                         try:
                             role_data = json.loads(json_str)
                             logger.info(f"成功解析JSON，角色名: {role_data.get('name', '未知')}")
+
+                            # 验证生成的角色名字
+                            character_name = role_data.get('name', '')
+                            if character_name:
+                                from novel_generator.chapter import validate_character_name, normalize_character_name
+
+                                # 标准化名字
+                                normalized_name = normalize_character_name(character_name)
+                                if normalized_name != character_name:
+                                    logger.info(f"名字已标准化: '{character_name}' -> '{normalized_name}'")
+                                    role_data['name'] = normalized_name
+
+                                # 验证名字合理性
+                                expected_traits = {
+                                    'gender': role_data.get('gender', '未知')
+                                }
+                                is_valid, validation_msg = validate_character_name(normalized_name, expected_traits)
+
+                                if is_valid:
+                                    logger.info(f"角色名字验证通过: {normalized_name}")
+                                else:
+                                    logger.warning(f"角色名字验证失败: {validation_msg}")
+                                    # 可以选择在这里记录警告但仍然接受，或者要求重新生成
+                                    # 目前选择记录警告但继续接受
+
                             logger.info("存储角色数据并通知主线程...")
 
                             # 使用线程安全的方式存储数据
@@ -1709,21 +1787,20 @@ class RoleManager(QWidget):
                             error_msg = f"LLM返回的数据格式不正确，无法解析: {str(e)}"
                             logger.error(f"{error_msg}\n原始响应: {response[:500]}")
                             show_error_dialog(self, "解析错误", error_msg)
+                        except Exception as e:
+                            progress.close()
+                            dialog.accept()
+                            error_msg = f"生成角色时出错: {str(e)}"
+                            logger.error(f"{error_msg}\n异常类型: {type(e).__name__}")
+                            import traceback
+                            logger.error(traceback.format_exc())
+                            show_error_dialog(self, "错误", error_msg)
                     else:
                         progress.close()
                         dialog.accept()
                         error_msg = "未找到有效的JSON数据"
                         logger.error(f"{error_msg}\n原始响应: {response[:500]}")
                         show_error_dialog(self, "解析错误", error_msg)
-
-                except Exception as e:
-                    progress.close()
-                    dialog.accept()
-                    error_msg = f"生成角色时出错: {str(e)}"
-                    logger.error(f"{error_msg}\n异常类型: {type(e).__name__}")
-                    import traceback
-                    logger.error(traceback.format_exc())
-                    show_error_dialog(self, "错误", error_msg)
 
             # 在新线程中执行生成
             thread = threading.Thread(target=generate_role, daemon=True)

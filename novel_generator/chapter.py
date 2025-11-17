@@ -362,7 +362,51 @@ def build_chapter_prompt(
 
     # 获取前文内容和摘要
     recent_texts = get_last_n_chapters_text(chapters_dir, novel_number, n=3)
-    
+
+    # 新增：基于向量检索的上下文检索
+    context_from_previous_chapter = ""
+    context_stats = {}
+    try:
+        from .context_retriever import retrieve_context, generate_project_id
+
+        # 创建嵌入适配器
+        embedding_adapter = create_embedding_adapter(
+            embedding_interface_format,
+            embedding_api_key,
+            embedding_url,
+            embedding_model_name
+        )
+
+        # 生成项目ID
+        project_id = generate_project_id(filepath)
+
+        # 构建查询（使用章节蓝图信息）
+        context_query = f"""
+        章节标题: {chapter_title}
+        章节角色: {characters_involved}
+        场景地点: {scene_location}
+        章节作用: {chapter_purpose}
+        情节预告: {foreshadowing}
+        """
+
+        # 检索前一章上下文
+        context_from_previous_chapter, context_stats = retrieve_context(
+            embedding_adapter=embedding_adapter,
+            query=context_query.strip(),
+            filepath=filepath,
+            chapter_num=int(novel_number),
+            project_id=project_id,
+            max_context_tokens=2000,
+            k=3
+        )
+
+        logging.info(f"Context retrieval result: {context_stats}")
+
+    except Exception as e:
+        logging.error(f"Error in context retrieval: {str(e)}")
+        context_from_previous_chapter = ""
+        context_stats = {"retrieved": False, "reason": "error"}
+
     try:
         logging.info("Attempting to generate summary")
         short_summary = summarize_recent_chapters(
@@ -514,6 +558,7 @@ def build_chapter_prompt(
         next_chapter_foreshadowing=next_chapter_foreshadow,
         next_chapter_plot_twist_level=next_chapter_twist,
         next_chapter_summary=next_chapter_summary,
+        context_from_previous_chapter=context_from_previous_chapter,
         filtered_context=filtered_context
     )
 
@@ -590,3 +635,206 @@ def generate_chapter_draft(
     save_string_to_txt(chapter_content, chapter_file)
     logging.info(f"[Draft] Chapter {novel_number} generated as a draft.")
     return chapter_content
+
+# =============== 角色名字验证和管理功能 ===============
+
+def validate_character_name(name: str, expected_traits: dict = None) -> tuple[bool, str]:
+    """
+    验证角色名字是否符合合理性要求
+
+    Args:
+        name: 待验证的名字
+        expected_traits: 期望的角色特征，包含gender等
+
+    Returns:
+        (是否有效, 错误信息)
+    """
+    if not name or not isinstance(name, str):
+        return False, "名字不能为空"
+
+    # 去除前后空格
+    name = name.strip()
+
+    # 1. 长度验证
+    if len(name) < 2 or len(name) > 4:
+        return False, f"名字长度必须在2-4个字符之间，当前长度：{len(name)}"
+
+    # 2. 字符有效性检查 - 只允许中文字符
+    if not re.match(r'^[\u4e00-\u9fa5]+$', name):
+        return False, "名字只能包含中文字符，不能包含数字、特殊符号或英文字母"
+
+    # 3. 乱码检测
+    try:
+        name.encode('utf-8').decode('utf-8')
+    except UnicodeError:
+        return False, "名字包含无效的Unicode字符"
+
+    # 4. 性别一致性检查
+    if expected_traits and 'gender' in expected_traits:
+        gender = expected_traits['gender']
+        if gender == '男':
+            female_chars = ['娜', '丽', '婉', '婷', '芳', '蓉', '秀', '慧', '珍', '萍', '莉', '霞', '燕']
+            if any(char in name for char in female_chars):
+                return False, f"男性角色名字不应包含女性化字词：{name}"
+        elif gender == '女':
+            male_chars = ['刚', '强', '勇', '猛', '霸', '威', '烈', '悍', '彪', '雄', '豪', '峻', '峰']
+            if any(char in name for char in male_chars):
+                return False, f"女性角色名字不应包含男性化字词：{name}"
+
+    # 5. 文化背景合理性 - 检查是否为常见中文姓氏
+    common_surnames = ['李', '王', '张', '刘', '陈', '杨', '赵', '黄', '周', '吴', '徐', '孙', '胡', '朱', '高', '林', '何', '郭', '马', '罗']
+    if len(name) >= 2:
+        first_char = name[0]
+        if first_char not in common_surnames:
+            logging.warning(f"名字 '{name}' 的姓氏不常见，但仍在接受范围内")
+
+    # 6. 质量检查 - 避免负面谐音
+    negative_sounds = ['死', '笨', '傻', '坏', '恶', '鬼', '怪', '丑', '脏', '穷']
+    for sound in negative_sounds:
+        if sound in name:
+            return False, f"名字包含不当字词：{sound}"
+
+    return True, "名字验证通过"
+
+def normalize_character_name(name: str) -> str:
+    """
+    标准化角色名字格式
+
+    Args:
+        name: 原始名字
+
+    Returns:
+        标准化后的名字
+    """
+    if not name:
+        return name
+
+    # 去除前后空格
+    name = name.strip()
+
+    # 去除内部多余空格
+    name = re.sub(r'\s+', '', name)
+
+    # 确保首字母大写（对于中文来说无需操作，但保留接口）
+    if name and not name[0].isupper():
+        # 对于中文，检查是否为英文字母
+        if name[0].isalpha():
+            name = name[0].upper() + name[1:]
+
+    return name
+
+def check_name_consistency(name: str, traits: dict) -> tuple[bool, str]:
+    """
+    检查名字与角色特征的一致性
+
+    Args:
+        name: 角色名字
+        traits: 角色特征字典
+
+    Returns:
+        (是否一致, 错误信息)
+    """
+    if not traits:
+        return True, "无特征信息，跳过一致性检查"
+
+    # 性别一致性检查
+    if 'gender' in traits:
+        gender = traits['gender']
+        is_valid, msg = validate_character_name(name, {'gender': gender})
+        if not is_valid:
+            return False, f"性别一致性检查失败：{msg}"
+
+    # 年龄一致性检查
+    if 'age' in traits:
+        age = traits['age']
+        if isinstance(age, (int, float)) and age < 18:
+            # 检查是否有过于成熟的名字
+            mature_chars = ['德', '仁', '义', '礼', '智', '信', '忠', '孝']
+            if any(char in name for char in mature_chars):
+                logging.warning(f"年轻角色（{age}岁）使用了较成熟的名字：{name}")
+        elif isinstance(age, (int, float)) and age > 60:
+            # 检查是否过于年轻化的名字
+            young_chars = ['萌', '可爱', '甜', '乐', '欢']
+            if any(char in name for char in young_chars):
+                logging.warning(f"年长角色（{age}岁）使用了较年轻化的名字：{name}")
+
+    # 文化背景一致性检查
+    if 'cultural_background' in traits:
+        background = traits['cultural_background']
+        if '西方' in background:
+            # 如果角色是西方背景，中文名字可能不太合适
+            logging.warning(f"西方背景角色使用了中文名字：{name}")
+
+    return True, "名字一致性检查通过"
+
+# 角色名字注册表 - 用于跨章节名字一致性
+character_name_registry = {}
+
+def get_or_create_character_name(character_id: str, traits: dict = None) -> str:
+    """
+    获取或创建角色名字，确保跨章节一致性
+
+    Args:
+        character_id: 角色唯一标识
+        traits: 角色特征，用于生成新名字
+
+    Returns:
+        角色名字
+    """
+    global character_name_registry
+
+    # 如果角色已存在，返回已保存的名字
+    if character_id in character_name_registry:
+        logging.info(f"使用已存在的角色名字：{character_name_registry[character_id]}")
+        return character_name_registry[character_id]
+
+    # 如果是新角色，需要生成名字
+    if traits:
+        # 这里可以调用AI生成名字的逻辑
+        # 暂时返回一个基于ID的默认名字
+        default_name = f"角色{character_id[-3:]}"
+        character_name_registry[character_id] = default_name
+        logging.info(f"为新角色生成默认名字：{default_name}")
+        return default_name
+    else:
+        # 如果没有特征信息，使用简单默认名字
+        default_name = f"待定角色"
+        character_name_registry[character_id] = default_name
+        logging.warning(f"无特征信息，使用默认名字：{default_name}")
+        return default_name
+
+def save_character_name_registry(project_path: str):
+    """
+    保存角色名字注册表到项目文件
+
+    Args:
+        project_path: 项目路径
+    """
+    global character_name_registry
+
+    try:
+        registry_file = os.path.join(project_path, "character_names.json")
+        with open(registry_file, 'w', encoding='utf-8') as f:
+            json.dump(character_name_registry, f, ensure_ascii=False, indent=2)
+        logging.info(f"角色名字注册表已保存到：{registry_file}")
+    except Exception as e:
+        logging.error(f"保存角色名字注册表失败：{e}")
+
+def load_character_name_registry(project_path: str):
+    """
+    从项目文件加载角色名字注册表
+
+    Args:
+        project_path: 项目路径
+    """
+    global character_name_registry
+
+    try:
+        registry_file = os.path.join(project_path, "character_names.json")
+        if os.path.exists(registry_file):
+            with open(registry_file, 'r', encoding='utf-8') as f:
+                character_name_registry = json.load(f)
+            logging.info(f"角色名字注册表已加载，包含 {len(character_name_registry)} 个角色")
+    except Exception as e:
+        logging.error(f"加载角色名字注册表失败：{e}")
+        character_name_registry = {}

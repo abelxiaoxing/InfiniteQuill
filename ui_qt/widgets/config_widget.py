@@ -15,7 +15,8 @@ from PySide6.QtWidgets import (
     QPushButton, QComboBox, QFormLayout, QGridLayout,
     QMessageBox, QCheckBox, QSlider, QFrame, QTextEdit
 )
-from PySide6.QtCore import Signal, Qt, QTimer
+from PySide6.QtCore import Signal, Qt, QTimer, QPropertyAnimation, QEasingCurve
+from PySide6.QtGui import QPalette
 from PySide6.QtGui import QFont
 
 from ..utils.ui_helpers import (
@@ -163,7 +164,7 @@ class ConfigWidget(QWidget):
         # 最大令牌数
         params_layout.addWidget(QLabel("最大令牌数:"), 1, 0)
         self.max_tokens = QSpinBox()
-        self.max_tokens.setRange(1, 32000)
+        self.max_tokens.setRange(1, 999999999)  # 移除32000限制，允许自由设置
         self.max_tokens.setValue(8192)
         params_layout.addWidget(self.max_tokens, 1, 1)
 
@@ -467,17 +468,18 @@ class ConfigWidget(QWidget):
         button_layout.setContentsMargins(0, 0, 0, 0)
         button_layout.addStretch()
 
-        self.reset_btn = QPushButton(" 重置")
-        self.reset_btn.clicked.connect(self.reset_config)
-        button_layout.addWidget(self.reset_btn)
+        # 移除多余的按钮 - 无感配置模式下不需要手动保存按钮
+        # self.reset_btn = QPushButton(" 重置")
+        # self.reset_btn.clicked.connect(self.reset_config)
+        # button_layout.addWidget(self.reset_btn)
 
-        self.apply_btn = QPushButton(" 应用")
-        self.apply_btn.clicked.connect(self.apply_config)
-        button_layout.addWidget(self.apply_btn)
+        # self.apply_btn = QPushButton(" 应用")
+        # self.apply_btn.clicked.connect(self.apply_config)
+        # button_layout.addWidget(self.apply_btn)
 
-        self.save_btn = QPushButton(" 保存配置")
-        self.save_btn.clicked.connect(self.save_config)
-        button_layout.addWidget(self.save_btn)
+        # self.save_btn = QPushButton(" 保存配置")
+        # self.save_btn.clicked.connect(self.save_config)
+        # button_layout.addWidget(self.save_btn)
 
         layout.addWidget(button_widget)
 
@@ -673,12 +675,18 @@ class ConfigWidget(QWidget):
         if reply == QMessageBox.Yes:
             if "llm_configs" in self.config and current_config in self.config["llm_configs"]:
                 del self.config["llm_configs"][current_config]
-                self.config_selector.removeItem(self.config_selector.findText(current_config))
+
+                # 添加淡出动画效果
+                self.fade_out_config_selector_item(current_config)
+
+                # 延迟移除项目，让动画完成
+                QTimer.singleShot(300, lambda: self.config_selector.removeItem(self.config_selector.findText(current_config)))
 
                 # 更新LLM模型选择选项卡中的模型列表
                 self.update_llm_selection_models()
 
-                show_info_dialog(self, "成功", f"配置 '{current_config}' 已删除")
+                # 移除删除成功提示 - 无感配置模式下不需要多余反馈
+                # show_info_dialog(self, "成功", f"配置 '{current_config}' 已删除")
 
     def update_llm_selection_models(self):
         """更新LLM模型选择选项卡中的模型列表"""
@@ -807,34 +815,35 @@ class ConfigWidget(QWidget):
 
         QTimer.singleShot(100, perform_test)
 
-    def apply_config(self):
-        """应用配置 - 同时触发自动保存"""
-        self.update_config_from_ui()
-        self.config_changed.emit(self.config)
-
-        # 如果启用了自动保存，立即触发保存
-        if self.auto_save.isChecked():
-            self.force_save_config()
-
-        show_info_dialog(self, "成功", "配置已应用")
-
-    def save_config(self):
-        """保存配置 - 使用新的自动保存机制"""
-        self.force_save_config()
-
-    def reset_config(self):
-        """重置配置"""
-        reply = QMessageBox.question(
-            self, "确认重置",
-            "确定要重置所有配置吗？\n此操作不可撤销。",
-            QMessageBox.Yes | QMessageBox.No,
-            QMessageBox.No
-        )
-
-        if reply == QMessageBox.Yes:
-            self.config = {}
-            self.load_current_config()
-            show_info_dialog(self, "成功", "配置已重置")
+    # 已删除的方法 - 对应的按钮已移除
+    # def apply_config(self):
+    #     """应用配置 - 同时触发自动保存"""
+    #     self.update_config_from_ui()
+    #     self.config_changed.emit(self.config)
+    #
+    #     # 如果启用了自动保存，立即触发保存
+    #     if self.auto_save.isChecked():
+    #         self.force_save_config()
+    #
+    #     show_info_dialog(self, "成功", "配置已应用")
+    #
+    # def save_config(self):
+    #     """保存配置 - 使用新的自动保存机制"""
+    #     self.force_save_config()
+    #
+    # def reset_config(self):
+    #     """重置配置"""
+    #     reply = QMessageBox.question(
+    #         self, "确认重置",
+    #         "确定要重置所有配置吗？\n此操作不可撤销。",
+    #         QMessageBox.Yes | QMessageBox.No,
+    #         QMessageBox.No
+    #     )
+    #
+    #     if reply == QMessageBox.Yes:
+    #         self.config = {}
+    #         self.load_current_config()
+    #         show_info_dialog(self, "成功", "配置已重置")
 
     def update_config_from_ui(self):
         """从界面更新配置"""
@@ -1151,6 +1160,25 @@ class ConfigWidget(QWidget):
         # 允许关闭
         event.accept()
         logging.info("配置窗口关闭完成")
+
+    def fade_out_config_selector_item(self, item_text: str):
+        """为配置选择器中的项目添加淡出动画效果"""
+        # 找到对应的索引
+        index = self.config_selector.findText(item_text)
+        if index >= 0:
+            # 创建透明度动画
+            self.fade_animation = QPropertyAnimation(self.config_selector, b"windowOpacity")
+            self.fade_animation.setDuration(300)  # 300毫秒动画
+            self.fade_animation.setStartValue(1.0)
+            self.fade_animation.setEndValue(0.3)  # 淡出到30%透明度
+            self.fade_animation.setEasingCurve(QEasingCurve.OutCubic)
+
+            # 动画完成后恢复透明度
+            self.fade_animation.finished.connect(
+                lambda: self.config_selector.setWindowOpacity(1.0)
+            )
+
+            self.fade_animation.start()
 
     def force_save_config(self):
         """强制立即保存配置（用于手动保存按钮）"""

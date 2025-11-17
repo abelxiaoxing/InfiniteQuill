@@ -25,6 +25,8 @@ from .widgets.status_bar import StatusBar
 from .utils.theme_manager import ThemeManager
 from .dialogs.settings_dialog import SettingsDialog
 from .dialogs.progress_dialog import ProgressDialog
+from .dialogs.coherence_report_dialog import CoherenceReportDialog, CoherenceProgressDialog
+from .coherence_check_thread import CoherenceCheckThread
 from config_manager import load_config, save_config
 from novel_generator.project_manager import ProjectManager
 
@@ -178,6 +180,13 @@ class MainWindow(QMainWindow):
 
         # 工具菜单
         tools_menu = menubar.addMenu("工具(&T)")
+
+        coherence_check_action = QAction("连贯性检查(&C)", self)
+        coherence_check_action.setStatusTip("检查小说的跨章节连贯性")
+        coherence_check_action.triggered.connect(self.run_coherence_check)
+        tools_menu.addAction(coherence_check_action)
+
+        tools_menu.addSeparator()
 
         settings_action = QAction("设置(&S)", self)
         settings_action.setStatusTip("打开设置对话框")
@@ -383,25 +392,116 @@ class MainWindow(QMainWindow):
 
     def change_theme(self, theme_name: str):
         """更改主题"""
-        self.config["theme"] = theme_name
+        try:
+            self.logger.info(f"开始切换主题到: {theme_name}")
 
-        # 同时更新theme_settings中的current_theme，确保配置一致性
-        if "theme_settings" not in self.config:
-            self.config["theme_settings"] = {}
-        self.config["theme_settings"]["current_theme"] = theme_name
+            # 显示切换中状态
+            self.status_bar.show_message(f"正在切换到{theme_name}主题...", 0)
 
-        self.apply_theme()
+            self.config["theme"] = theme_name
 
-        # 更新章节编辑器的主题样式
-        if hasattr(self, 'chapter_editor'):
-            self.chapter_editor.update_theme_styles()
+            # 同时更新theme_settings中的current_theme，确保配置一致性
+            if "theme_settings" not in self.config:
+                self.config["theme_settings"] = {}
+            self.config["theme_settings"]["current_theme"] = theme_name
 
-        # 更新状态栏的主题显示
-        if hasattr(self, 'status_bar'):
-            self.status_bar.update_theme_display(theme_name)
+            # 应用主题
+            self.apply_theme()
 
-        self.save_config()
-        self.status_bar.show_message(f"主题已切换到: {theme_name}", 3000)
+            # 更新章节编辑器的主题样式
+            if hasattr(self, 'chapter_editor'):
+                self.chapter_editor.update_theme_styles()
+
+            # 更新状态栏的主题显示
+            if hasattr(self, 'status_bar'):
+                self.status_bar.update_theme_display(theme_name)
+
+            # 保存配置
+            self.save_config()
+
+            # 显示成功消息
+            theme_display_name = "浅色" if theme_name == "light" else "暗色"
+            self.status_bar.show_message(f"主题已切换到{theme_display_name}模式", 3000)
+
+            self.logger.info(f"主题切换完成: {theme_name}")
+
+        except Exception as e:
+            self.logger.error(f"主题切换失败: {e}")
+            self.status_bar.show_message(f"主题切换失败: {str(e)}", 5000)
+            import traceback
+            self.logger.error(traceback.format_exc())
+
+    def run_coherence_check(self):
+        """运行连贯性检查"""
+        if not self.current_project_path:
+            QMessageBox.warning(self, "警告", "请先打开一个项目后再进行连贯性检查。")
+            return
+
+        # 检查项目是否有章节内容
+        try:
+            chapters = self.project_manager.get_all_chapters()
+            if not chapters:
+                QMessageBox.information(self, "信息", "当前项目没有章节内容，无法进行连贯性检查。")
+                return
+
+            # 创建进度对话框
+            progress_dialog = CoherenceProgressDialog(self)
+            progress_dialog.show()
+
+            # 在后台线程中运行连贯性检查
+            self.coherence_thread = CoherenceCheckThread(
+                self.current_project_path,
+                chapters,
+                self.config.get('llm', {})
+            )
+            self.coherence_thread.progress_updated.connect(progress_dialog.update_status)
+            self.coherence_thread.check_completed.connect(self.on_coherence_check_completed)
+            self.coherence_thread.check_failed.connect(self.on_coherence_check_failed)
+            self.coherence_thread.finished.connect(progress_dialog.accept)
+
+            self.coherence_thread.start()
+
+        except Exception as e:
+            QMessageBox.critical(self, "错误", f"启动连贯性检查时出错:\n{str(e)}")
+
+    def on_coherence_check_completed(self, scores, issues, report_text):
+        """连贯性检查完成回调"""
+        # 关闭进度对话框
+        if hasattr(self, 'coherence_thread'):
+            self.coherence_thread.deleteLater()
+
+        # 显示结果报告
+        report_dialog = CoherenceReportDialog(scores, issues, report_text, self)
+        report_dialog.exec()
+
+        # 在状态栏显示摘要信息
+        issue_count = len(issues)
+        high_issues = len([i for i in issues if i.severity == 'high'])
+        medium_issues = len([i for i in issues if i.severity == 'medium'])
+
+        if high_issues > 0:
+            self.status_bar.show_message(
+                f"连贯性检查完成 - 发现{issue_count}个问题 (高优先级: {high_issues}, 中优先级: {medium_issues})",
+                5000
+            )
+        elif issue_count > 0:
+            self.status_bar.show_message(
+                f"连贯性检查完成 - 发现{issue_count}个问题 (总体质量: {scores.overall_score:.1f}/100)",
+                5000
+            )
+        else:
+            self.status_bar.show_message(
+                f"连贯性检查完成 - 未发现问题 (总体质量: {scores.overall_score:.1f}/100)",
+                5000
+            )
+
+    def on_coherence_check_failed(self, error_message):
+        """连贯性检查失败回调"""
+        if hasattr(self, 'coherence_thread'):
+            self.coherence_thread.deleteLater()
+
+        QMessageBox.critical(self, "检查失败", f"连贯性检查过程中出错:\n{error_message}")
+        self.status_bar.show_message("连贯性检查失败", 3000)
 
     def show_about(self):
         """显示关于对话框"""

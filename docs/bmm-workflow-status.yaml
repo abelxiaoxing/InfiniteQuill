@@ -42,6 +42,9 @@ workflow_status:
   # Phase 2.2: Gate Check
   solutioning-gate-check: required  # agent: architect
 
+  # Additional Analysis Workflows
+  brainstorm-project: docs/brainstorming-session-results-2025-11-17-v2.md  # agent: analyst - COMPLETED
+
   # Phase 3: Implementation
   # Phase 3.1: Sprint Planning
   sprint-planning: required  # agent: sm

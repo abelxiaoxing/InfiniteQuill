@@ -12,6 +12,8 @@ import re
 import ssl
 import requests
 import warnings
+import hashlib
+from datetime import datetime
 from langchain_chroma import Chroma
 logging.basicConfig(
     filename='app.log',      # 日志文件名
@@ -179,10 +181,17 @@ def split_text_for_vectorstore(chapter_text: str, max_length: int = 500, similar
     
     return final_segments
 
-def update_vector_store(embedding_adapter, new_chapter: str, filepath: str):
+def update_vector_store(embedding_adapter, new_chapter: str, filepath: str, chapter_num: int = None, project_id: str = None):
     """
     将最新章节文本插入到向量库中。
     若库不存在则初始化；若初始化/更新失败，则跳过。
+
+    Args:
+        embedding_adapter: 嵌入模型适配器
+        new_chapter: 章节文本内容
+        filepath: 项目文件路径
+        chapter_num: 章节编号（用于metadata）
+        project_id: 项目ID（用于metadata）
     """
     from utils import read_file, clear_file_content, save_string_to_txt
     splitted_texts = split_text_for_vectorstore(new_chapter)
@@ -201,18 +210,47 @@ def update_vector_store(embedding_adapter, new_chapter: str, filepath: str):
         return
 
     try:
-        docs = [Document(page_content=str(t)) for t in splitted_texts]
+        # 创建带metadata的文档
+        docs = []
+        for i, text in enumerate(splitted_texts):
+            metadata = {
+                "content_type": "full",
+                "segment_index": i,
+                "timestamp": datetime.now().isoformat()
+            }
+
+            # 添加章节和项目metadata（如果提供）
+            if chapter_num is not None:
+                metadata["chapter_num"] = chapter_num
+            if project_id is not None:
+                metadata["project_id"] = project_id
+
+            doc = Document(page_content=str(text), metadata=metadata)
+            docs.append(doc)
+
         store.add_documents(docs)
-        logging.info("Vector store updated with the new chapter splitted segments.")
+        logging.info(f"Vector store updated with {len(docs)} documents. Chapter: {chapter_num}, Project: {project_id}")
     except Exception as e:
         logging.warning(f"Failed to update vector store: {e}")
         traceback.print_exc()
 
-def get_relevant_context_from_vector_store(embedding_adapter, query: str, filepath: str, k: int = 2) -> str:
+def get_relevant_context_from_vector_store(embedding_adapter, query: str, filepath: str, k: int = 2,
+                                          chapter_num: int = None, project_id: str = None) -> str:
     """
     从向量库中检索与 query 最相关的 k 条文本，拼接后返回。
     如果向量库加载/检索失败，则返回空字符串。
     最终只返回最多2000字符的检索片段。
+
+    Args:
+        embedding_adapter: 嵌入模型适配器
+        query: 查询文本
+        filepath: 项目文件路径
+        k: 返回的文档数量
+        chapter_num: 过滤特定章节（可选）
+        project_id: 过滤特定项目（可选）
+
+    Returns:
+        str: 检索到的相关文本拼接结果
     """
     store = load_vector_store(embedding_adapter, filepath)
     if not store:
@@ -220,14 +258,58 @@ def get_relevant_context_from_vector_store(embedding_adapter, query: str, filepa
         return ""
 
     try:
-        docs = store.similarity_search(query, k=k)
-        if not docs:
+        # 构建metadata过滤条件 - ChromaDB需要特定的过滤格式
+        filter_dict = None
+        if chapter_num is not None or project_id is not None:
+            conditions = []
+            if chapter_num is not None:
+                conditions.append({"chapter_num": chapter_num})
+            if project_id is not None:
+                conditions.append({"project_id": project_id})
+
+            # 使用$and操作符组合多个条件
+            if len(conditions) == 1:
+                filter_dict = conditions[0]
+            else:
+                filter_dict = {"$and": conditions}
+
+        # 使用带分数的相似度搜索
+        try:
+            if filter_dict:
+                docs_with_scores = store.similarity_search_with_score(query, k=k, filter=filter_dict)
+            else:
+                docs_with_scores = store.similarity_search_with_score(query, k=k)
+        except Exception as e:
+            # 如果metadata过滤失败，回退到无过滤搜索
+            logging.warning(f"Metadata filter failed, falling back to unfiltered search: {e}")
+            docs_with_scores = store.similarity_search_with_score(query, k=k)
+
+        if not docs_with_scores:
             logging.info(f"No relevant documents found for query '{query}'. Returning empty context.")
             return ""
-        combined = "\n".join([d.page_content for d in docs])
-        if len(combined) > 2000:
-            combined = combined[:2000]
+
+        # 格式化结果，包含相似度分数
+        combined_parts = []
+        total_length = 0
+        max_length = 2000
+
+        for doc, score in docs_with_scores:
+            text = doc.page_content
+            if total_length + len(text) > max_length:
+                # 截断最后一段以保持在限制内
+                remaining_length = max_length - total_length
+                if remaining_length > 50:  # 只在剩余空间足够时才添加
+                    text = text[:remaining_length] + "..."
+                    combined_parts.append(f"[相似度: {score:.3f}] {text}")
+                break
+
+            combined_parts.append(f"[相似度: {score:.3f}] {text}")
+            total_length += len(text)
+
+        combined = "\n\n".join(combined_parts)
+        logging.info(f"Retrieved {len(docs_with_scores)} documents with metadata filter: {filter_dict}")
         return combined
+
     except Exception as e:
         logging.warning(f"Similarity search failed: {e}")
         traceback.print_exc()

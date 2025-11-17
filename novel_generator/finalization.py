@@ -81,6 +81,10 @@ def finalize_chapter(
     clear_file_content(character_state_file)
     save_string_to_txt(new_char_state, character_state_file)
 
+    # 生成项目ID用于metadata
+    from .context_retriever import generate_project_id
+    project_id = generate_project_id(filepath)
+
     update_vector_store(
         embedding_adapter=create_embedding_adapter(
             embedding_interface_format,
@@ -89,7 +93,9 @@ def finalize_chapter(
             embedding_model_name
         ),
         new_chapter=chapter_text,
-        filepath=filepath
+        filepath=filepath,
+        chapter_num=novel_number,
+        project_id=project_id
     )
 
     logging.info(f"Chapter {novel_number} has been finalized.")

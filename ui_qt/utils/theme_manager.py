@@ -6,6 +6,7 @@
 """
 
 import os
+import logging
 from typing import Optional
 from PySide6.QtWidgets import QApplication
 from PySide6.QtCore import QObject
@@ -18,22 +19,32 @@ class ThemeManager(QObject):
         super().__init__()
         self.current_theme = "light"
         self.theme_cache = {}
+        self.logger = logging.getLogger(__name__)
 
     def load_qss_file(self, theme_name: str) -> str:
         """加载QSS样式文件"""
         if theme_name in self.theme_cache:
+            self.logger.debug(f"从缓存加载主题: {theme_name}")
             return self.theme_cache[theme_name]
 
         # 样式文件路径
         style_dir = os.path.join(os.path.dirname(__file__), "..", "styles")
         qss_file = os.path.join(style_dir, f"{theme_name}.qss")
 
+        self.logger.info(f"尝试加载QSS文件: {qss_file}")
+
         if os.path.exists(qss_file):
-            with open(qss_file, 'r', encoding='utf-8') as f:
-                qss_content = f.read()
-                self.theme_cache[theme_name] = qss_content
-                return qss_content
+            try:
+                with open(qss_file, 'r', encoding='utf-8') as f:
+                    qss_content = f.read()
+                    self.theme_cache[theme_name] = qss_content
+                    self.logger.info(f"成功加载主题文件: {theme_name}")
+                    return qss_content
+            except Exception as e:
+                self.logger.error(f"加载QSS文件失败: {e}")
+                return self.get_default_style(theme_name)
         else:
+            self.logger.warning(f"QSS文件不存在: {qss_file}，使用默认样式")
             # 如果样式文件不存在，返回默认样式
             return self.get_default_style(theme_name)
 
@@ -1076,12 +1087,42 @@ class ThemeManager(QObject):
 
     def apply_theme(self, window, theme_name: str):
         """应用主题到指定窗口"""
-        app = QApplication.instance()
-        if app:
-            qss_content = self.load_qss_file(theme_name)
-            app.setStyleSheet(qss_content)
-            self.current_theme = theme_name
-            window.current_theme = theme_name
+        try:
+            self.logger.info(f"开始应用主题: {theme_name}")
+            app = QApplication.instance()
+            if app:
+                qss_content = self.load_qss_file(theme_name)
+                if qss_content:
+                    app.setStyleSheet(qss_content)
+                    self.current_theme = theme_name
+                    window.current_theme = theme_name
+                    self.logger.info(f"主题样式已应用到应用程序: {theme_name}")
+
+                    # 重新polish所有widget以确保主题正确应用
+                    widgets_polished = 0
+                    for widget in app.allWidgets():
+                        try:
+                            widget.style().unpolish(widget)
+                            widget.style().polish(widget)
+                            # 安全地调用update方法
+                            try:
+                                widget.update()
+                            except TypeError:
+                                # 如果update方法需要参数，跳过调用
+                                pass
+                            widgets_polished += 1
+                        except Exception as e:
+                            self.logger.warning(f"polish widget失败: {e}")
+
+                    self.logger.info(f"完成主题切换，已polish {widgets_polished} 个widget")
+                else:
+                    self.logger.error(f"无法加载主题内容: {theme_name}")
+            else:
+                self.logger.error("无法获取QApplication实例")
+        except Exception as e:
+            self.logger.error(f"应用主题失败: {e}")
+            import traceback
+            self.logger.error(traceback.format_exc())
 
     def get_available_themes(self) -> list:
         """获取可用主题列表"""

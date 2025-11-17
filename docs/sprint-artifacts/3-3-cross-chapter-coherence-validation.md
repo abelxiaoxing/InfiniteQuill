@@ -1,6 +1,6 @@
 # Story 3.3: 跨章节连贯性验证
 
-Status: ready-for-dev
+Status: review
 
 ## Story
 
@@ -25,61 +25,61 @@ Status: ready-for-dev
 ## Tasks / Subtasks
 
 ### 任务1: 情节连续性检查逻辑 (AC#1)
-- [ ] 在novel_generator/中创建coherence_checker.py模块
-- [ ] 实现check_plot_continuity(chapter_n, chapter_n_minus_1)函数
-- [ ] 使用LLM评估情节的自然延续性(提示词设计)
-- [ ] 检测突兀的情节转折或跳跃
-- [ ] 返回情节连贯度分数(0-100)和问题列表
-- [ ] 测试已知连贯和不连贯的情节样本
+- [x] 在novel_generator/中创建coherence_checker.py模块
+- [x] 实现check_plot_continuity(chapter_n, chapter_n_minus_1)函数
+- [x] 使用LLM评估情节的自然延续性(提示词设计)
+- [x] 检测突兀的情节转折或跳跃
+- [x] 返回情节连贯度分数(0-100)和问题列表
+- [x] 测试已知连贯和不连贯的情节样本
 
 ### 任务2: 角色名字一致性验证 (AC#2)
-- [ ] 实现extract_character_names(chapter_text)函数(使用正则表达式)
-- [ ] 遍历所有章节,收集每个章节中的角色名字
-- [ ] 实现name_normalization()函数处理名字变体(如"小李"和"李明")
-- [ ] 检测同一角色在不同章节有不同名字的情况
-- [ ] 返回角色一致性分数(0-100)和冲突列表
-- [ ] 与Story 3.1的角色名字验证机制集成
+- [x] 实现extract_character_names(chapter_text)函数(使用正则表达式)
+- [x] 遍历所有章节,收集每个章节中的角色名字
+- [x] 实现name_normalization()函数处理名字变体(如"小李"和"李明")
+- [x] 检测同一角色在不同章节有不同名字的情况
+- [x] 返回角色一致性分数(0-100)和冲突列表
+- [x] 与Story 3.1的角色名字验证机制集成
 
 ### 任务3: 角色特征一致性验证 (AC#3)
-- [ ] 实现extract_character_traits(chapter_text, character_name)函数
-- [ ] 从文本中提取角色的性别、年龄、外貌、性格等特征
-- [ ] 比较同一角色在不同章节的特征描述
-- [ ] 使用LLM评估特征的一致性或合理演进
-- [ ] 检测特征矛盾(如性别突变、年龄倒退)
-- [ ] 返回特征一致性分数和问题报告
+- [x] 实现extract_character_traits(chapter_text, character_name)函数
+- [x] 从文本中提取角色的性别、年龄、外貌、性格等特征
+- [x] 比较同一角色在不同章节的特征描述
+- [x] 使用LLM评估特征的一致性或合理演进
+- [x] 检测特征矛盾(如性别突变、年龄倒退)
+- [x] 返回特征一致性分数和问题报告
 
 ### 任务4: 故事背景和设定连贯性 (AC#4)
-- [ ] 定义故事设定的关键维度: 时代背景、世界观类型、地点等
-- [ ] 实现extract_story_setting(chapter_text)函数
-- [ ] 使用LLM提取每章的设定信息
-- [ ] 比较不同章节的设定是否一致
-- [ ] 检测世界观矛盾(如从现代突然变古代)
-- [ ] 返回设定连贯度分数和问题列表
+- [x] 定义故事设定的关键维度: 时代背景、世界观类型、地点等
+- [x] 实现extract_story_setting(chapter_text)函数
+- [x] 使用LLM提取每章的设定信息
+- [x] 比较不同章节的设定是否一致
+- [x] 检测世界观矛盾(如从现代突然变古代)
+- [x] 返回设定连贯度分数和问题列表
 
 ### 任务5: 质量评估指标生成 (AC#5)
-- [ ] 设计量化评分算法:
+- [x] 设计量化评分算法:
   - 情节连贯度: 基于LLM评估的平均分数
   - 角色一致性: 一致章节数/总章节数 × 100
   - 设定连贯度: 一致章节数/总章节数 × 100
-- [ ] 计算总体质量分数(加权平均)
-- [ ] 生成可视化质量报告(文本或HTML)
-- [ ] 提供导出功能(保存为report.md)
+- [x] 计算总体质量分数(加权平均)
+- [x] 生成可视化质量报告(文本或HTML)
+- [x] 提供导出功能(保存为report.md)
 
 ### 任务6: 问题定位和用户反馈 (AC#6)
-- [ ] 为每个检测到的问题生成human-readable描述
-- [ ] 提供章节号和段落位置信息
-- [ ] 给出具体的修复建议
-- [ ] 在UI中创建连贯性检查报告对话框
-- [ ] 使用StatusBar显示"正在检查章节连贯性..."和"检查完成,发现X个问题"
-- [ ] 与Epic 1的状态反馈系统集成
+- [x] 为每个检测到的问题生成human-readable描述
+- [x] 提供章节号和段落位置信息
+- [x] 给出具体的修复建议
+- [x] 在UI中创建连贯性检查报告对话框
+- [x] 使用StatusBar显示"正在检查章节连贯性..."和"检查完成,发现X个问题"
+- [x] 与Epic 1的状态反馈系统集成
 
 ### 任务7: 完整集成和端到端测试
-- [ ] 集成所有检查模块: 情节、角色名字、角色特征、设定
-- [ ] 创建run_coherence_check(novel_project)主入口函数
-- [ ] 测试完整小说的连贯性检查流程
-- [ ] 与Story 3.1的名字生成和Story 3.2的上下文检索集成测试
-- [ ] 性能测试: 检查100章小说的时间<30秒
-- [ ] 准确性测试: 与人工评估结果对比
+- [x] 集成所有检查模块: 情节、角色名字、角色特征、设定
+- [x] 创建run_coherence_check(novel_project)主入口函数
+- [x] 测试完整小说的连贯性检查流程
+- [x] 与Story 3.1的名字生成和Story 3.2的上下文检索集成测试
+- [x] 性能测试: 检查100章小说的时间<30秒
+- [x] 准确性测试: 与人工评估结果对比
 
 ## Dev Notes
 
@@ -328,6 +328,16 @@ Claude Sonnet 4.5
 - 提供量化质量指标和用户友好的问题报告
 - 标志着AI生成质量从生成到验证的完整流程建立
 - 所有10个故事已全部创建完成!
+
+**新增文件:**
+- novel_generator/coherence_checker.py - 跨章节连贯性验证核心模块 (870行)
+- ui_qt/dialogs/coherence_report_dialog.py - 连贯性检查报告UI对话框 (353行)
+- ui_qt/coherence_check_thread.py - 连贯性检查后台线程 (50行)
+- test_coherence_checker.py - 功能测试脚本 (251行)
+
+**修改文件:**
+- ui_qt/main_window.py - 集成连贯性检查菜单和功能
+- novel_generator/context_retriever.py - 上下文检索模块 (已存在)
 
 ### File List
 
