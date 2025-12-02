@@ -1002,19 +1002,19 @@ class ConfigWidget(QWidget):
         if self.auto_save_timer.isActive():
             self.auto_save_timer.stop()
 
-        # 启动新的2秒定时器
-        self.auto_save_timer.start(2000)
-
-        # 发送状态信号
-        self.auto_save_status_changed.emit("info", "配置已更改，2秒后自动保存...")
-
-        # 检查配置是否有实际变更
+        # 先更新配置数据以便比较
         self.update_config_from_ui()
+        
+        # 检查配置是否有实际变更
         if self.config != self.original_config:
             logging.debug("配置发生变更，启动自动保存定时器")
+            # 启动新的2秒定时器
+            self.auto_save_timer.start(2000)
+            # 发送状态信号
+            self.auto_save_status_changed.emit("info", "配置已更改，2秒后自动保存...")
         else:
             logging.debug("配置无实际变更，取消自动保存")
-            self.auto_save_timer.stop()
+            # 无变更，不启动定时器
 
     def perform_auto_save(self):
         """执行自动保存 - 在后台线程中"""
@@ -1024,7 +1024,7 @@ class ConfigWidget(QWidget):
             logging.debug("保存正在进行中，标记为待保存")
             return
 
-        # 更新配置数据
+        # 再次更新配置数据（确保最新状态）
         self.update_config_from_ui()
 
         # 检查是否有实际变更
@@ -1039,12 +1039,29 @@ class ConfigWidget(QWidget):
         # 在后台线程中执行保存
         def save_in_background():
             try:
+                # 确保配置包含必要的数据结构
+                config_to_save = self.config.copy()
+                
+                # 确保包含LLM配置结构
+                if "llm_configs" not in config_to_save:
+                    config_to_save["llm_configs"] = {}
+                    
+                # 确保包含选择配置结构
+                if "choose_configs" not in config_to_save:
+                    config_to_save["choose_configs"] = {}
+                    
+                # 保留原有的其他配置（如theme、test_persistence等）
+                if self.original_config:
+                    for key, value in self.original_config.items():
+                        if key not in ["llm_configs", "choose_configs"]:
+                            config_to_save[key] = value
+
                 # 执行保存
-                success = save_config(self.config, None)
+                success = save_config(config_to_save, None)
 
                 if success:
                     # 更新原始配置
-                    self.original_config = self.config.copy()
+                    self.original_config = config_to_save.copy()
                     logging.info("配置自动保存成功")
 
                     # 发送成功信号（需要在主线程中执行）

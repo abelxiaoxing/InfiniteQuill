@@ -181,13 +181,34 @@ def save_config(config_data: dict, config_file: str = None) -> bool:
         config_file = Path(config_file)
 
     try:
+        # 先加载现有配置（如果存在）
+        existing_config = {}
+        if config_file.exists():
+            try:
+                with open(config_file, 'r', encoding='utf-8') as f:
+                    existing_config = json.load(f)
+            except:
+                pass  # 如果读取失败，使用空配置
+        
+        # 合并配置：新配置覆盖旧配置，但保留旧配置中不存在于新配置的字段
+        merged_config = existing_config.copy()
+        merged_config.update(config_data)
+        
         # 确保目录存在
         config_file.parent.mkdir(parents=True, exist_ok=True)
 
         with open(config_file, 'w', encoding='utf-8') as f:
-            json.dump(config_data, f, ensure_ascii=False, indent=4)
+            json.dump(merged_config, f, ensure_ascii=False, indent=4)
+        
+        # 添加日志以验证保存内容
+        print(f"配置已保存到: {config_file}")
+        print(f"保存的配置包含以下键: {list(merged_config.keys())}")
+        if "llm_configs" in merged_config:
+            print(f"LLM配置已保存，包含 {len(merged_config['llm_configs'])} 个配置")
+        
         return True
-    except:
+    except Exception as e:
+        print(f"保存配置失败: {e}")
         return False
 
 def test_llm_config(interface_format, api_key, base_url, model_name, temperature, max_tokens, timeout, log_func, handle_exception_func):
@@ -242,3 +263,20 @@ def test_embedding_config(api_key, base_url, interface_format, model_name, log_f
             handle_exception_func("测试Embedding配置时出错")
 
     threading.Thread(target=task, daemon=True).start()
+
+def debug_config_save():
+    """调试配置保存功能"""
+    config_path = get_user_config_path()
+    print(f"配置文件路径: {config_path}")
+    print(f"配置文件存在: {config_path.exists()}")
+    
+    if config_path.exists():
+        try:
+            with open(config_path, 'r', encoding='utf-8') as f:
+                config = json.load(f)
+            print(f"当前配置包含的键: {list(config.keys())}")
+            print(f"是否包含llm_configs: {'llm_configs' in config}")
+            if 'llm_configs' in config:
+                print(f"LLM配置数量: {len(config['llm_configs'])}")
+        except Exception as e:
+            print(f"读取配置失败: {e}")
