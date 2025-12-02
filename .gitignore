@@ -21,3 +21,4 @@ uv.lock
 pyproject.toml
 *CLAUDE.md
 cache/
+book/

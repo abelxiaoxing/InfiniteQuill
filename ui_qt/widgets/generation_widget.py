@@ -30,6 +30,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 from novel_generator.architecture import Novel_architecture_generate
 from novel_generator.blueprint import Chapter_blueprint_generate
 from novel_generator.chapter import generate_chapter_draft
+from novel_generator.data_manager import DataManager
 from llm_adapters import create_llm_adapter
 from project_manager import ProjectManager
 
@@ -1053,6 +1054,115 @@ class GenerationWidget(QWidget):
             self.progress_label.setText(message)
         self.progress_updated.emit(value, message)
 
+    def _parse_character_state(self, content: str) -> List[tuple]:
+        """从角色状态文本中解析角色名和简要描述"""
+        import re
+
+        characters = []
+        current_name = None
+        buffer: List[str] = []
+
+        for raw_line in content.splitlines():
+            line = raw_line.strip()
+            if not line:
+                continue
+
+            # “新出场角色”后面的内容通常不是核心角色
+            if line.startswith("新出场角色"):
+                break
+
+            name_match = re.match(r"^(.+?)[：:]\s*$", line)
+            if name_match and not line.startswith(("├", "│", "└", "─", "-", "•", "·")):
+                candidate = name_match.group(1).strip()
+                # 跳过通用标题
+                if candidate and candidate not in ("角色名", "角色名称", "角色"):
+                    if current_name:
+                        characters.append((current_name, "\n".join(buffer).strip()))
+                    current_name = candidate
+                    buffer = []
+                continue
+
+            if current_name:
+                cleaned_line = line.lstrip("├│└─ ")
+                buffer.append(cleaned_line)
+
+        if current_name:
+            characters.append((current_name, "\n".join(buffer).strip()))
+
+        # 去重，保持顺序
+        unique = []
+        seen = set()
+        for name, desc in characters:
+            if name in seen:
+                continue
+            seen.add(name)
+            unique.append((name, desc))
+        return unique
+
+    def _sync_roles_from_character_state(self, project_path: str) -> int:
+        """将角色状态文件中的角色同步到角色管理的数据源"""
+        if not project_path:
+            return 0
+
+        state_file = os.path.join(project_path, "character_state.txt")
+        if not os.path.exists(state_file):
+            return 0
+
+        try:
+            with open(state_file, "r", encoding="utf-8") as f:
+                content = f.read()
+        except Exception as e:
+            logger.warning(f"读取角色状态文件失败: {e}")
+            return 0
+
+        characters = self._parse_character_state(content)
+        if not characters:
+            logger.info("角色状态文件中未解析到角色信息")
+            return 0
+
+        try:
+            data_manager = DataManager(project_path)
+            existing_roles = data_manager.load_roles()
+        except Exception as e:
+            logger.warning(f"加载角色数据失败，将创建新角色文件: {e}")
+            data_manager = DataManager(project_path)
+            existing_roles = {}
+
+        added = 0
+        for name, desc in characters:
+            if not name or name in existing_roles:
+                continue
+            role_entry = {
+                "name": name,
+                "category": "主要角色",
+                "type": "主角",
+                "gender": "未知",
+                "age": 20,
+                "appearance": desc,
+                "description": desc,
+                "background_story": desc
+            }
+            existing_roles[name] = role_entry
+            added += 1
+
+        if added:
+            try:
+                data_manager.save_roles(existing_roles)
+            except Exception as e:
+                logger.error(f"保存角色数据失败: {e}")
+                return 0
+
+            # 如果主窗口存在角色管理器且已加载同一个项目，则刷新显示
+            parent = self.parent()
+            if parent and hasattr(parent, "role_manager") and parent.role_manager:
+                try:
+                    parent.role_manager.load_project(project_path)
+                    parent.role_manager.refresh_role_list()
+                except Exception as e:
+                    logger.warning(f"刷新角色管理器失败: {e}")
+
+        return added
+
     def generate_architecture(self):
         """生成小说架构"""
         if self.is_generating:
@@ -1142,6 +1252,14 @@ class GenerationWidget(QWidget):
         self.arch_result_text.setPlainText(result)
         self.log_message("架构生成完成！")
         self.update_progress(100, "架构生成完成")
+
+        # 尝试将角色状态同步到角色管理
+        synced_count = 0
+        project_path = self.save_path.text().strip()
+        if project_path:
+            synced_count = self._sync_roles_from_character_state(project_path)
+            if synced_count:
+                self.log_message(f"已从角色状态文件同步 {synced_count} 个角色到角色管理器")
 
         # 更新项目状态
         if self.project_manager.get_current_project():
@@ -1655,6 +1773,14 @@ class GenerationWidget(QWidget):
             self.current_project_path_label.setText(f"项目路径: {full_path}")
             self.current_project_path_label.setStyleSheet("color: green; font-size: 8pt;")
 
+            # 通知主窗口同步项目上下文（角色管理/章节编辑等）
+            parent = self.parent()
+            if parent and hasattr(parent, "on_project_created"):
+                try:
+                    parent.on_project_created(full_path)
+                except Exception as e:
+                    logger.warning(f"同步新项目到主窗口失败: {e}")
+
             self.log_message(f"项目创建成功: {full_path}")
             show_info_dialog(self, "成功", "项目创建成功！")
         else:
@@ -1692,6 +1818,14 @@ class GenerationWidget(QWidget):
         self.current_project_name_label.setStyleSheet("color: green; font-size: 9pt; font-weight: bold;")
         self.current_project_path_label.setText(f"项目路径: {project_path}")
         self.current_project_path_label.setStyleSheet("color: green; font-size: 8pt;")
+
+        # 通知主窗口同步项目上下文（角色管理/章节编辑等）
+        parent = self.parent()
+        if parent and hasattr(parent, "on_project_loaded"):
+            try:
+                parent.on_project_loaded(project_path)
+            except Exception as e:
+                logger.warning(f"同步打开的项目到主窗口失败: {e}")
 
         self.log_message(f"项目加载成功: {project_path}")
         show_info_dialog(self, "成功", "项目加载成功！")

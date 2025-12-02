@@ -671,12 +671,63 @@ class RoleManager(QWidget):
 
     def load_role_details(self, name: str):
         """加载角色详情"""
-        self.role_name.setText(name)
-        self.role_type.setCurrentText("主角")
-        self.role_gender.setCurrentText("男")
-        self.role_age.setValue(25)
-        self.role_appearance.setPlainText("中等身材，黑色短发，眼神锐利...")
-        self.background_story.setPlainText("出生于普通家庭，从小就展现出非凡的能力...")
+        role_data = self.all_roles.get(name, {})
+        if not role_data:
+            show_error_dialog(self, "错误", "未找到角色数据")
+            return
+
+        # 先清空编辑器，再填充数据
+        self._safe_clear_editor()
+        self.current_role = name
+
+        # 暂停信号，避免触发 on_basic_info_changed/on_personality_changed
+        self.role_name.blockSignals(True)
+        self.role_appearance.blockSignals(True)
+        self.personality_description.blockSignals(True)
+        self.background_story.blockSignals(True)
+
+        try:
+            self.role_name.setText(role_data.get("name", name))
+            self.role_type.setCurrentText(role_data.get("type", "主角"))
+            self.role_gender.setCurrentText(role_data.get("gender", "未知"))
+
+            # 年龄可能是字符串，安全转换
+            try:
+                age_value = int(role_data.get("age", 20))
+            except (TypeError, ValueError):
+                age_value = 20
+            self.role_age.setValue(age_value)
+
+            # 外貌/描述
+            appearance_text = role_data.get("appearance") or role_data.get("description", "")
+            self.role_appearance.setPlainText(appearance_text)
+
+            # 详细文本字段
+            self.personality_description.setPlainText(role_data.get("personality_description", ""))
+            self.background_story.setPlainText(role_data.get("background_story", ""))
+            self.special_abilities.setPlainText(role_data.get("special_abilities", ""))
+            self.weaknesses.setPlainText(role_data.get("weaknesses", ""))
+            self.education_history.setPlainText(role_data.get("education_history", ""))
+            self.role_birthplace.setText(role_data.get("birthplace", ""))
+            self.role_family.setText(role_data.get("family", ""))
+            self.role_occupation.setText(role_data.get("occupation", ""))
+
+            # 能力列表
+            self.abilities_list.clear()
+            for ability in role_data.get("abilities", []):
+                self.abilities_list.addItem(str(ability))
+
+            # 性格标签
+            personalities = set(role_data.get("personalities", []))
+            for trait, checkbox in self.personality_checkboxes.items():
+                checkbox.blockSignals(True)
+                checkbox.setChecked(trait in personalities)
+                checkbox.blockSignals(False)
+        finally:
+            self.role_name.blockSignals(False)
+            self.role_appearance.blockSignals(False)
+            self.personality_description.blockSignals(False)
+            self.background_story.blockSignals(False)
 
     def create_new_role(self):
         """创建新角色"""
@@ -752,15 +803,33 @@ class RoleManager(QWidget):
             if checkbox.isChecked():
                 personalities.append(trait)
 
+        # 当前位置作为分类，如果没有选择则尝试沿用已有分类
+        current_category = self.current_category if self.current_category not in ("", "全部") else None
+        existing_category = self.all_roles.get(self.current_role, {}).get("category")
+        category = current_category or existing_category or "未分类"
+
+        # 角色能力列表
+        abilities = [self.abilities_list.item(i).text() for i in range(self.abilities_list.count())]
+        appearance_text = self.role_appearance.toPlainText()
+
         return {
             "name": self.role_name.text(),
             "type": self.role_type.currentText(),
             "gender": self.role_gender.currentText(),
             "age": self.role_age.value(),
-            "appearance": self.role_appearance.toPlainText(),
+            "category": category,
+            "appearance": appearance_text,
+            "description": appearance_text,
             "personalities": personalities,
             "personality_description": self.personality_description.toPlainText(),
-            "background_story": self.background_story.toPlainText()
+            "background_story": self.background_story.toPlainText(),
+            "abilities": abilities,
+            "special_abilities": self.special_abilities.toPlainText(),
+            "weaknesses": self.weaknesses.toPlainText(),
+            "education_history": self.education_history.toPlainText(),
+            "birthplace": self.role_birthplace.text(),
+            "family": self.role_family.text(),
+            "occupation": self.role_occupation.text()
         }
 
     def save_current_role(self):
@@ -773,8 +842,11 @@ class RoleManager(QWidget):
             validate_required(role_name, "角色名称")
 
             # 如果是新角色，设置默认分类
-            if "category" not in role_data:
+            if "category" not in role_data or not role_data["category"]:
                 role_data["category"] = "未分类"
+            else:
+                # 确保分类写回
+                role_data["category"] = role_data.get("category", "未分类")
 
             # 保存到内存中的角色列表
             self.all_roles[role_name] = role_data
