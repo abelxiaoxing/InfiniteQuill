@@ -1071,8 +1071,8 @@ class GenerationWidget(QWidget):
             if line.startswith("新出场角色"):
                 break
 
-            name_match = re.match(r"^(.+?)[：:]\s*$", line)
-            if name_match and not line.startswith(("├", "│", "└", "─", "-", "•", "·")):
+            name_match = re.match(r"^([^：:├│└\s][^：:]*)[：:]\s*$", line)
+            if name_match:
                 candidate = name_match.group(1).strip()
                 # 跳过通用标题
                 if candidate and candidate not in ("角色名", "角色名称", "角色"):
@@ -1082,8 +1082,9 @@ class GenerationWidget(QWidget):
                     buffer = []
                 continue
 
-            if current_name:
-                cleaned_line = line.lstrip("├│└─ ")
+            # 如果没有匹配到角色名但有内容，且当前有角色名，则添加到缓冲区
+            if current_name and line:
+                cleaned_line = re.sub(r'^[├│└─\s]+', '', line)  # 移除树形结构字符
                 buffer.append(cleaned_line)
 
         if current_name:
@@ -1156,8 +1157,12 @@ class GenerationWidget(QWidget):
             parent = self.parent()
             if parent and hasattr(parent, "role_manager") and parent.role_manager:
                 try:
-                    parent.role_manager.load_project(project_path)
-                    parent.role_manager.refresh_role_list()
+                    # 确保角色管理器正在管理同一个项目
+                    if parent.role_manager.current_project_path != project_path:
+                        parent.role_manager.load_project(project_path)
+                    else:
+                        parent.role_manager.refresh_role_list()
+                    logger.info(f"已同步 {added} 个角色到角色管理器")
                 except Exception as e:
                     logger.warning(f"刷新角色管理器失败: {e}")
 

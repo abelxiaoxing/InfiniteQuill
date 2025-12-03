@@ -59,7 +59,37 @@ class MainWindow(QMainWindow):
         self.current_project_path = ""
         self.is_generating = False
 
+        # 自动加载最近的项目
+        self._auto_load_last_project()
+
         self.logger.info("主窗口初始化完成")
+
+    def _auto_load_last_project(self):
+        """自动加载最近打开的项目"""
+        try:
+            # 尝试从配置中获取最近项目路径
+            last_project = self.config.get("last_project_path", "")
+            if last_project and self.project_manager.is_valid_project(last_project):
+                self.logger.info(f"自动加载最近项目: {last_project}")
+                self.load_project(last_project)
+            else:
+                # 如果没有配置的最近项目，尝试查找默认项目路径
+                from pathlib import Path
+                default_project = Path.home() / "InfiniteQuill" / "book"
+                if default_project.exists() and self.project_manager.is_valid_project(str(default_project)):
+                    self.logger.info(f"使用默认项目路径: {default_project}")
+                    self.load_project(str(default_project))
+                # 尝试查找book目录
+                elif Path("book").exists() and any(self.project_manager.is_valid_project(str(p)) 
+                                                  for p in Path("book").iterdir() if p.is_dir()):
+                    # 找到第一个有效项目
+                    for p in Path("book").iterdir():
+                        if p.is_dir() and self.project_manager.is_valid_project(str(p)):
+                            self.logger.info(f"使用找到的项目路径: {p}")
+                            self.load_project(str(p))
+                            break
+        except Exception as e:
+            self.logger.error(f"自动加载项目失败: {e}")
 
     def setup_ui(self):
         """设置用户界面"""
@@ -357,6 +387,10 @@ class MainWindow(QMainWindow):
                 self.current_project_path = project_path
                 self.status_bar.set_project_path(project_path)
 
+                # 保存最近项目路径到配置
+                self.config["last_project_path"] = project_path
+                self.save_config()  # 保存配置
+                
                 # 获取项目信息
                 info = self.project_manager.get_project_info()
                 project_name = info.get('name', '未知项目')

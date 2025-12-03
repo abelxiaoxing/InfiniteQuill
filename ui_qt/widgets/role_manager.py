@@ -6,6 +6,7 @@
 """
 
 import threading
+import logging
 from typing import Dict, Any, Optional, List
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QSplitter,
@@ -24,6 +25,9 @@ from ..utils.ui_helpers import (
 )
 from ..utils.tooltip_manager import tooltip_manager
 from novel_generator.data_manager import DataManager
+
+# 设置日志记录器
+logger = logging.getLogger(__name__)
 
 
 class RoleManager(QWidget):
@@ -46,8 +50,10 @@ class RoleManager(QWidget):
         self.all_roles = {}  # 存储所有角色的数据 {name: {data}}
         self.current_filter = ""  # 当前过滤文本
         self.current_category = "全部"  # 当前分类过滤
+        self.data_manager = None  # 初始化数据管理器为None
+        self.current_project_path = ""  # 当前项目路径
         self.setup_ui()
-        self.load_sample_data()
+        # 不再在初始化时直接加载示例数据，只在没有项目数据时加载
 
         # 使用事件循环启动后执行的定时器
         QTimer.singleShot(0, self._initialize_timer)
@@ -1397,25 +1403,56 @@ class RoleManager(QWidget):
         if not self.data_manager:
             self.data_manager = DataManager(project_path)
 
+        # 清除现有角色
+        self.clear_all_roles()
+
         # 尝试加载已保存的角色数据
         try:
             if hasattr(self.data_manager, 'load_roles'):
                 roles_data = self.data_manager.load_roles()
                 if roles_data:
-                    # 清除现有角色
-                    self.clear_all_roles()
-
                     # 加载保存的角色
                     for role_name, role_data in roles_data.items():
                         self.add_role(role_name, role_data.get("category", "未分类"), role_data)
+                    logger.info(f"已加载 {len(roles_data)} 个项目角色")
+                else:
+                    # 如果没有保存的角色数据，加载示例数据
+                    self.load_sample_data()
+                    logger.info("未找到项目角色数据，已加载示例角色")
         except Exception as e:
-            # 如果没有保存的角色数据或加载失败，使用示例数据
-            print(f"加载角色数据失败: {e}")
+            # 加载失败时，显示错误并加载示例数据
+            from ..utils.dialogs import show_error_dialog
+            logger.error(f"加载角色数据失败: {e}")
+            show_error_dialog(self, "加载错误", f"加载项目角色数据失败:\n{str(e)}\n\n将使用示例角色数据")
+            self.load_sample_data()
 
     def clear_all_roles(self):
         """清除所有角色"""
         self.all_roles.clear()
         self.clear_role_list()
+
+    def refresh_role_list(self):
+        """刷新角色列表显示"""
+        # 保存当前选中的角色
+        current_item = self.role_list.currentItem()
+        current_role_name = None
+        if current_item:
+            current_role_name = current_item.text().split(" - ")[0]
+        
+        # 清除列表显示
+        self.clear_role_list()
+        
+        # 重新添加所有符合过滤条件的角色
+        for role_name, role_data in self.all_roles.items():
+            if self._role_matches_filter(role_data):
+                item = self.create_role_list_item(role_name, role_data)
+                self.role_list.addItem(item)
+                # 如果是之前选中的角色，重新选中
+                if current_role_name and role_name == current_role_name:
+                    self.role_list.setCurrentItem(item)
+        
+        logger.info(f"角色列表已刷新，显示 {self.role_list.count()} 个角色")
+
 
     def save_roles(self):
         """保存角色数据到项目"""
